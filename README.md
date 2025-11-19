@@ -1,6 +1,6 @@
-## Drift Experiments — Reproducibility Guide
+## Learning under Distributional Drift— Reproducibility Guide
 
-This repository bundles the exact scripts used for the paper’s Gaussian toy-model experiments and the neural-network simulation. Everything runs on CPU; no external datasets are required.
+This repository bundles the exact scripts used for the paper’s Gaussian toy-model experiments and the neural-network simulation.
 
 ### Environment
 
@@ -12,11 +12,6 @@ This repository bundles the exact scripts used for the paper’s Gaussian toy-mo
    pip install -r requirements.txt
    ```
    PyTorch is listed with a CPU wheel; feel free to swap the install command to match your platform (CUDA/cuDNN) if needed.
-
-Typical runtimes on a 2021 MacBook Pro (M1 Pro, single-threaded):
-
-- Gaussian suite — ~6 minutes total (each script ≤2 minutes).
-- NN suite — ~30 minutes for the simulation; plotting completes in <1 minute.
 
 ### Reproducing Figures
 
