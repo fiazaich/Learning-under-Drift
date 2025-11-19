@@ -1,6 +1,7 @@
 ## Learning under Distributional Drift— Reproducibility Guide
 
-This repository bundles the exact scripts used for the paper’s Gaussian toy-model experiments and the neural-network simulation.
+This repository bundles the exact scripts used for the Gaussian toy-model experiments and the neural-network simulation used in the paper **Learning under Distributional Drift: Reproducibility as an
+Intrinsic Statistical Resource** by Sofiya Zaichyk.
 
 ### Environment
 
