@@ -18,7 +18,7 @@ Intrinsic Statistical Resource** by Sofiya Zaichyk.
 
 Two helper scripts orchestrate the full runs. They drop outputs under `out/<experiment>_<timestamp>_<id>/`.
 
-#### Gaussian suite (Figures 1–3)
+#### Gaussian suite (Figures 3a and 3b)
 
 ```bash
 ./run_gaussian_figures.sh
@@ -31,7 +31,7 @@ This sequentially executes:
 
 Each script writes summaries (+ CSV/JSON) plus publication-style figures into a fresh directory inside `out/`.
 
-#### Neural-network suite (Figure 4)
+#### Neural-network suite (Figures 4a and 4b)
 
 ```bash
 ./run_nn_with_plotting.sh
