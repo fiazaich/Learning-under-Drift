@@ -62,7 +62,7 @@ For a smoke test, run `python -m py_compile *.py` (already used in automation) o
 
 ### Citation
 
-If you build on this code, please cite the accompanying paper:
+If you build on or use this code, please cite the accompanying paper:
 
 ```
 @article{YZaichyk2025,
