@@ -8,7 +8,7 @@ Intrinsic Statistical Resource** by Sofiya Zaichyk.
 1. Use Python 3.9+.
 2. Install dependencies:
    ```bash
-   python3 -m venv .venv
+   python -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
    ```
@@ -38,14 +38,14 @@ Each script writes summaries (+ CSV/JSON) plus publication-style figures into a 
 ```
 
 This script (i) runs `NN_test_balanced.py` to generate the raw/summary tables and (ii) automatically invokes `NN_plotting_tool.py` on the newest `out/nn_multiT_*` directory to regenerate all NN plots.
-To experiment with different learner widths, call the simulator directly, e.g. `python3 NN_test_balanced.py --hidden-dim 64`, then rerun `NN_plotting_tool.py` on the resulting directory.
+To experiment with different learner widths, call the simulator directly, e.g. `python NN_test_balanced.py --hidden-dim 64`, then rerun `NN_plotting_tool.py` on the resulting directory.
 
 ### Manual usage
 
-- Every Python file exposes a CLI (`python3 script.py --help`) so you can tweak metrics or inputs.
+- Every Python file exposes a CLI (`python script.py --help`) so you can tweak metrics or inputs.
 - `NN_plotting_tool.py` can be pointed at any prior run:
   ```bash
-  python3 NN_plotting_tool.py \
+  python NN_plotting_tool.py \
     --summary out/nn_multiT_YYYYMMDD_HHMMSS_xxxxxx/figNN_additivity_summary.csv \
     --meta    out/nn_multiT_YYYYMMDD_HHMMSS_xxxxxx/figNN_additivity_meta.json \
     --raw     out/nn_multiT_YYYYMMDD_HHMMSS_xxxxxx/figNN_additivity_raw.csv
@@ -53,7 +53,7 @@ To experiment with different learner widths, call the simulator directly, e.g. `
 
 ### Quick validation
 
-For a smoke test, run `python3 -m py_compile *.py` (already used in automation) or execute the helper scripts; both rely solely on the files tracked here and therefore confirm the install is healthy.
+For a smoke test, run `python -m py_compile *.py` (already used in automation) or execute the helper scripts; both rely solely on the files tracked here and therefore confirm the install is healthy.
 
 ### Notes
 
