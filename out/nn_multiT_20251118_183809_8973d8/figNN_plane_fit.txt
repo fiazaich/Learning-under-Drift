@@ -1,0 +1,39 @@
+NN Additivity plane: err ~ b0 + b_s*T^{-1/2} + b1*(sum_dt/T) + b2*(sum_kappa/T)
+b0   = 0.092672
+b_s  = -1.563566
+b1   = 1.131567
+b2   = 1.863884
+R^2  = 0.7087
+
+--- Risk-gap plane & absolute-budget collapse (theory upper envelope) ---
+Risk-gap plane: gap ~ b0^g + b_s^g*T^{-1/2} + b1^g*(sum_dt/T) + b2^g*(sum_kappa/T)
+b0^g = -0.000045, b_s^g = 0.017146, b1^g = 0.008322, b2^g = 0.007916, R^2 = 0.6587
+alpha_abs (|alpha_gap_fit|) = 1.215048
+Collapse (risk gap): y ≈ 0.000334 + 0.008011 * (C_T^+/T), R^2 = 0.4652
+
+--- Held-out collapse (alpha* fit on FIT, evaluated on EVAL) ---
+holdout: hold_largest_T (T=6400)
+n_fit=36, n_eval=12
+alpha*_fit = 1.289486
+Eval line (err):   y ≈ 0.047477 + 2.224579 * (C_T/T), R^2=0.9467
+Eval line (gap):   y ≈ -0.000000 + 0.014912 * (C_T/T), R^2=0.8636
+
+=== Speed-limit (risk-gap) fit: y ≈ c0 + c1*T^{-1/2} + c2*(C_T/T) ===
+alpha_theory = 1.215048
+c0 = -0.000055, c1 = 0.017145, c2 = 0.008014, R^2 = 0.6553
+--- Partial-residual collapse (remove T^(-1/2)) ---
+y_res ≈ -0.000000 + 0.008014*(C_T/T), R^2 = 0.5746
+--- Ratio ρ_T = y / (T^{-1/2}+C_T/T) ---
+mean=0.0112, std=0.0037, min=0.0051, max=0.0186
+
+=== Ablations on risk gap (theory form) ===
+Full: y ≈ c0 + c1*T^(-1/2) + c2*(C_T/T)
+c0=-0.000055, c1=0.017145, c2=0.008014, R^2=0.6553
+Drop T^(-1/2): R^2=0.4652, ΔR^2=0.1901, F=24.82
+Drop C_T/T:    R^2=0.1898, ΔR^2=0.4655, F=60.77
+Partial residual (y - c0 - c1*T^(-1/2)) vs C_T/T: a0=-0.000000, a1=0.008014, R^2=0.5746
+Per-T residual slopes (y_res vs C_T/T):
+  T=800: a1=0.004485, R^2=0.7867
+  T=1600: a1=0.003550, R^2=0.6692
+  T=3200: a1=0.009025, R^2=0.9119
+  T=6400: a1=0.014912, R^2=0.8636

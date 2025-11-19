@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the accompanying paper."
+title: "Learning under Drift: Speed Limits for Feedback-Rich Environments"
+authors:
+  - family-names: Author
+    given-names: Alice
+  - family-names: Author
+    given-names: Bob
+date-released: 2025-05-01
+url: "https://example.com/learning-under-drift"

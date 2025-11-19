@@ -1,0 +1,12 @@
+Gaussian additivity plane: traj_error_excess ~ b0 + b_s*T^-0.5 + b1*(sum_dt/T) + b2*(sum_kappa/T)
+b0   = 0.014919
+b_s  = 0.000334
+b1   = 4.065502
+b2   = 51.275812
+R^2  = 0.9697
+
+Collapse: traj_error_excess ~ a0 + a1 * (C_T/T)
+alpha_opt = 12.612417
+a0 = 0.014926
+a1 = 4.065502
+R^2  = 0.9697

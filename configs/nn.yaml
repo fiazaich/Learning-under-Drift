@@ -1,0 +1,10 @@
+nn_multiT:
+  d_in: 5
+  seeds: 12
+  k_policy: 0.25
+  sigma: 0.1
+  C_pol: 8.0
+  T_grid: [800, 1600, 3200, 6400]
+  drift_ratios: [0.0025, 0.005, 0.01, 0.02, 0.04, 0.08]
+  gamma_grid: [0.0, 0.01]
+  refresh_G_every: 25
