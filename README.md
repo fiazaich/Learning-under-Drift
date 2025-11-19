@@ -65,10 +65,11 @@ For a smoke test, run `python3 -m py_compile *.py` (already used in automation) 
 If you build on this code, please cite the accompanying paper:
 
 ```
-@article{YOURKEY2025,
-  title   = {Learning under Drift: Speed Limits for Feedback-Rich Environments},
-  author  = {A. Author and B. Author},
-  journal = {NeurIPS},
+@article{YZaichyk2025,
+  title   = {Learning under Distributional Drift: Reproducibility as an
+Intrinsic Statistical Resource},
+  author  = {S. Zaichyk},
+  journal = {},
   year    = {2025}
 }
 ```
