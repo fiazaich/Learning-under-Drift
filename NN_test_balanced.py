@@ -24,7 +24,7 @@ class MultiTConfig:
     C_pol: float = 8.0
     T_grid: Sequence[int] = (800, 1600, 3200, 6400)
     drift_ratios: Sequence[float] = (2.5e-3, 5e-3, 1e-2, 2e-2, 4e-2, 8e-2)
-    gamma_grid: Sequence[float] = (0.0, 0.01,0.05)
+    gamma_grid: Sequence[float] = (0.0, 0.01)
     refresh_G_every: int = 25
     hidden_dim: int = DEFAULT_HIDDEN
 
