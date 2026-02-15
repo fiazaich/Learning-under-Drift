@@ -54,7 +54,7 @@ METRIC_SPECS: Dict[str, MetricSpec] = {
     "traj_error": MetricSpec(
         name="traj_error",
         row_key="traj_pop_risk_excess",
-        label=r"$\widehat R_T - \operatorname{tr}(\Sigma)$",
+        label=r"$R_T - \operatorname{tr}(\Sigma)$",
         tag="traj_error_excess",
     ),
 }

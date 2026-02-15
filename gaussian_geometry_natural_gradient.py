@@ -12,13 +12,18 @@ import numpy as np
 
 try:
     import matplotlib as mpl
+    mpl.use("Agg")
     import matplotlib.pyplot as plt
+    plt.rcParams["text.usetex"] = False
     HAVE_PLT = True
 except Exception:
     HAVE_PLT = False
 
 import scienceplots
 plt.style.use(['science','ieee'])
+
+FIGSIZE = (3.2, 2.0)
+SAVEFIG_KW = {}
 
 import common_sim as cs  # fisher_step_length
 from out_utils import create_results_dir
@@ -97,53 +102,57 @@ def plot_bars(summary: Dict[str, object], out_prefix: str) -> None:
     cum = summary["cum_fisher_summary"]
     stp  = summary["steps_summary"]
 
-    import scienceplots
-    with plt.style.context(['science', 'ieee', {'text.usetex': False}]):
-        # same physical size as your other figs; constrained layout handles spacing
-        fig, axes = plt.subplots(1, 2, figsize=(3.2, 2.0), layout='constrained', sharey=False)
+    # same physical size as other Gaussian figs; constrained layout handles spacing
+    fig, axes = plt.subplots(1, 2, figsize=FIGSIZE, layout='constrained', sharey=False)
 
-        labels  = ["Euclidean\n(flat-metric)", "Fisher–Rao\n(information-geometric)"]
-        palette = ["#7c8a96", "#2f6b9a"]
+    labels  = ["Euclidean\n(flat-metric)", "Fisher–Rao\n(information-geometric)"]
+    palette = ["#7c8a96", "#2f6b9a"]
 
-        # lighter, science-y errorbar styling
-        errkw = dict(ecolor='0.25', lw=0.8, capsize=2.0, capthick=0.8)
+    # lighter, science-y errorbar styling
+    errkw = dict(ecolor='0.25', lw=0.8, capsize=2.0, capthick=0.8)
 
-        def draw_panel(ax, means, errors, title, ylabel):
-            ax.bar([0, 1], means, yerr=errors, color=palette, width=0.55,
-                   edgecolor='none', error_kw=errkw)
-            ax.set_xticks([0, 1], labels)
-            ax.set_title(title, fontsize='small', pad=2.0)
-            if ylabel:
-                ax.set_ylabel(ylabel, fontsize=6)
-            ax.grid(axis='y', which='major', alpha=0.45)
-            ax.tick_params(axis='x', labelsize='x-small')  # two-line tick labels
-            ax.tick_params(axis='y', labelsize='small')
+    def draw_panel(ax, means, errors, title, ylabel):
+        ax.bar([0, 1], means, yerr=errors, color=palette, width=0.55,
+               edgecolor='none', error_kw=errkw)
+        ax.set_xticks([0, 1], labels)
+        ax.set_title(title, fontsize='small', pad=2.0)
+        if ylabel:
+            ax.set_ylabel(ylabel, fontsize=6)
+        ax.grid(axis='y', which='major', alpha=0.45)
+        ax.tick_params(axis='x', labelsize='x-small')  # two-line tick labels
+        ax.tick_params(axis='y', labelsize='small')
 
-        draw_panel(
-            axes[0],
-            [cum["mean_a"], cum["mean_b"]],
-            [cum["se_a"],  cum["se_b"]],
-            "Cumulative Fisher length",
-            "path length",
-        )
-        draw_panel(
-            axes[1],
-            [stp["mean_a"], stp["mean_b"]],
-            [stp["se_a"],  stp["se_b"]],
-            "Steps to target",
-            "",
-        )
+    draw_panel(
+        axes[0],
+        [cum["mean_a"], cum["mean_b"]],
+        [cum["se_a"],  cum["se_b"]],
+        "Cumulative Fisher length",
+        "Path length (Fisher metric)",
+    )
+    draw_panel(
+        axes[1],
+        [stp["mean_a"], stp["mean_b"]],
+        [stp["se_a"],  stp["se_b"]],
+        "Steps to target",
+        "",
+    )
 
-        # small caption-style note below the panels
-        fig.text(0.5, -0.03,
-                 f"paired Δ (steps): {stp['mean_diff']:.1f} ± {stp['se_diff']:.1f}",
-                 ha='center', fontsize='x-small', color='0.3')
+    # small caption-style note below the panels
+    fig.text(
+        0.5,
+        -0.03,
+        f"paired diff (steps): {stp['mean_diff']:.1f} +/- {stp['se_diff']:.1f}",
+        ha='center',
+        fontsize='x-small',
+        color='0.3',
+    )
 
-        for ext in ("pdf", "svg", "png"):
-            fig.savefig(f"{out_prefix}.{ext}",
-                        dpi=(600 if ext == "png" else None),
-                        bbox_inches="tight")
-        plt.close(fig)
+    for ext in ("pdf", "svg", "png"):
+        fig.savefig(f"{out_prefix}.{ext}",
+                    dpi=(600 if ext == "png" else None),
+                    bbox_inches="tight",
+                    **SAVEFIG_KW)
+    plt.close(fig)
 
 
 
@@ -383,7 +392,7 @@ def main():
                     help="[fixA] Vanilla step size; default -1 means use 1/lambda_max(G).")
     ap.add_argument("--rho", type=float, default=0.9, help="[fixB] Per-step multiplicative drop for J.")
     ap.add_argument("--out_prefix", type=str, default="fig3_geometry", help="Output file prefix.")
-    ap.add_argument("--plot", action="store_true", help="Save PNG bar chart (requires matplotlib).")
+    ap.add_argument("--no-plot", action="store_true", help="Skip saving bar charts (CSV/JSON still saved).")
     args = ap.parse_args()
     results_dir = create_results_dir(f"gaussian_geometry_{args.mode}")
 
@@ -446,11 +455,11 @@ def main():
     print(f"  Paired diff (Vanilla - Natural): mean={stp['mean_diff']:.2f}  SE={stp['se_diff']:.2f}  "
           f"t={stp['t_stat']:.3f}  n={int(stp['n'])}")
 
-    if args.plot:
+    if not args.no_plot:
         plot_bars(s, paths.plot_prefix)
         print(f"\nSaved: {paths.csv}, {paths.json}, {paths.plot_prefix}.pdf/.svg/.png")
     else:
-        print(f"\nSaved: {paths.csv}, {paths.json}")
+        print(f"\nSaved: {paths.csv}, {paths.json} (plots skipped)")
 
 
 if __name__ == "__main__":
