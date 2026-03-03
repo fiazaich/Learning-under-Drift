@@ -1,75 +1,76 @@
-## Learning under Distributional Drift— Reproducibility Guide
+## Learning under Distributional Drift — Reproducibility Guide
 
-This repository bundles the exact scripts used for the Gaussian toy-model experiments and the neural-network simulation used in the paper **Learning under Distributional Drift: Reproducibility as an
-Intrinsic Statistical Resource** by Sofiya Zaichyk.
+Code for the Gaussian experiments, neural-network drift simulation, and Fisher–Rao footprint demo used in the paper **Learning under Distributional Drift: Reproducibility as an Intrinsic Statistical Resource** (S. Zaichyk).
 
 ### Environment
 
-1. Use Python 3.9+.
-2. Install dependencies:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
-   PyTorch is listed with a CPU wheel; feel free to swap the install command to match your platform (CUDA/cuDNN) if needed.
-
-### Reproducing Figures
-
-Two helper scripts orchestrate the full runs. They drop outputs under `out/<experiment>_<timestamp>_<id>/`.
-
-#### Gaussian suite (Figures 3a and 3b)
-
 ```bash
-./run_gaussian_figures.sh
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-This sequentially executes:
-- `gaussian_regime_recovery.py` — regime comparison,
-- `gaussian_additivity.py` — budget/additivity sweep,
-- `gaussian_geometry_natural_gradient.py` — geometry experiment.
+### Gaussian experiments
 
-Each script writes summaries (+ CSV/JSON) plus publication-style figures into a fresh directory inside `out/`.
-
-#### Neural-network suite (Figures 4a and 4b)
-
+1) Additivity / budget sweep  
 ```bash
-./run_nn_with_plotting.sh
+python gaussian_additivity_experiment.py
+```
+Outputs to `results/gaussian_additivity_<tag>/` with CSVs plus `budget_scatter.(pdf|png|svg)`.
+
+2) T-sweep saturation curves  
+```bash
+python gaussian_saturation_experiment.py
+```
+Writes `saturation_*.(pdf|png|svg)` under `results/gaussian_T_sweep_reflect_<tag>/`.
+
+### Neural-network drift experiment
+
+1) Generate data and metrics  
+```bash
+python nn_drift_repro_experiment.py --outdir nn_repro_results
 ```
 
-This script (i) runs `NN_test_balanced.py` to generate the raw/summary tables and (ii) automatically invokes `NN_plotting_tool.py` on the newest `out/nn_multiT_*` directory to regenerate all NN plots.
-To experiment with different learner widths, call the simulator directly, e.g. `python NN_test_balanced.py --hidden-dim 64`, then rerun `NN_plotting_tool.py` on the resulting directory.
+2) Plot (point to the run directory that contains `figNN_additivity_raw.csv`)  
+```bash
+python nn_repro_plotting.py --outdir out/nn_multiT_YYYYMMDD_HHMMSS_xxxxxx --target delta_rep
+# variants:
+#   --collapse-mode residual
+#   --do-3d
+#   --T-hold <T>
+```
 
-### Manual usage
+### Fisher–Rao footprint demo
 
-- Every Python file exposes a CLI (`python script.py --help`) so you can tweak metrics or inputs.
-- `NN_plotting_tool.py` can be pointed at any prior run:
-  ```bash
-  python NN_plotting_tool.py \
-    --summary out/nn_multiT_YYYYMMDD_HHMMSS_xxxxxx/figNN_additivity_summary.csv \
-    --meta    out/nn_multiT_YYYYMMDD_HHMMSS_xxxxxx/figNN_additivity_meta.json \
-    --raw     out/nn_multiT_YYYYMMDD_HHMMSS_xxxxxx/figNN_additivity_raw.csv
-  ```
+```bash
+python fisher_rao_footprint_demo.py --T 4000 --d 5 --regime mixed --C-exo 2.0 --gamma 0.01 --k 0.25
+```
+Produces `fr_footprint_rate_demo.(pdf|png)` and `fr_footprint_contraction_demo.(pdf|png)` under `results/fr_footprint_<tag>/`. Use `--multi-seed N` to also get `fr_footprint_rate_scatter.(pdf|png)`.
 
-### Quick validation
+### Quick checks
 
-For a smoke test, run `python -m py_compile *.py` (already used in automation) or execute the helper scripts; both rely solely on the files tracked here and therefore confirm the install is healthy.
+- `python -m py_compile *.py` to verify imports.
+- Each script supports `--help` for full CLI options.
 
-### Notes
+### One-shot run
 
-- All numerical seeds and grids are defined at the top of each script; for convenience they’re mirrored in `configs/gaussian.yaml` and `configs/nn.yaml`. Leave them untouched to reproduce the paper’s figures.
-- Outputs are intentionally timestamped to avoid overwriting previous runs; delete `out/` if you need a clean slate.
+```bash
+./run_experiments.sh
+```
+Runs the Gaussian additivity and saturation experiments, the NN drift experiment, plots the newest `nn_multiT_*` run, and generates the Fisher–Rao footprint figures.
 
 ### Citation
 
-If you build on or use this code, please cite the accompanying paper:
+If you use this code, please cite the accompanying paper:
 
 ```
-@article{YZaichyk2025,
-  title   = {Learning under Distributional Drift: Reproducibility as an
-Intrinsic Statistical Resource},
-  author  = {S. Zaichyk},
-  journal = {},
-  year    = {2025}
+@misc{zaichyk2026learningdistributionaldriftreproducibility,
+      title={Learning under Distributional Drift: Reproducibility as an Intrinsic Statistical Resource}, 
+      author={Sofiya Zaichyk},
+      year={2026},
+      eprint={2512.13506},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2512.13506}, 
 }
 ```
