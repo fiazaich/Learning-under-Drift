@@ -1,6 +1,6 @@
 ## Learning under Distributional Drift — Reproducibility Guide
 
-Code for the Gaussian experiments, neural-network drift simulation, and Fisher–Rao footprint demo used in the paper **Learning under Distributional Drift: Reproducibility as an Intrinsic Statistical Resource** (S. Zaichyk).
+Code for the Gaussian experiments, neural-network drift simulation, and Fisher–Rao footprint demo used in the paper **Learning under Distributional Drift: Prequential Reproducibility as an Intrinsic Statistical Resource** (S. Zaichyk).
 
 ### Environment
 
