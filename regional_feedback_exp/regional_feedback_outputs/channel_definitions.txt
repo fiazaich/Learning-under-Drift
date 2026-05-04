@@ -1,0 +1,7 @@
+This real-data experiment is an applied robustness / partial-observability check.
+It is not a direct contraction-theorem test and does not estimate intrinsic C_T/T.
+
+Channels:
+- Weak blind: 2 predicted-price bins x 4 deterministic random row buckets; buckets are fixed from row identity and unrelated to feedback-targeted variables.
+- Coarse score: 5 quantile bins of deployed predicted Unit Price, with bin edges fixed from D_0 baseline predictions.
+- Task-aligned: 5 predicted-price bins x 4 Order Quantity bins x 4 Unit Cost bins x binary Sales Channel subgroup; score bins match the coarse channel and all bins are fixed from D_0.

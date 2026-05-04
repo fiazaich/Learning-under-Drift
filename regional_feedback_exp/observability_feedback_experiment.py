@@ -16,6 +16,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from scipy import stats
 
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -38,6 +39,7 @@ TARGET_COL = "Unit Price"
 QUANTITY_COL = "Order Quantity"
 COST_COL = "Unit Cost"
 GROUP_COL = "Sales Channel"
+BLIND_COL = "WarehouseCode"
 
 N_ROUNDS = 20
 N_SEEDS = 10
@@ -55,12 +57,27 @@ NOISE_SCALE_C = 0.02
 NOISE_SCALE_Y = 0.02
 
 COARSE_SCORE_BINS = 5
+BLIND_SCORE_BINS = 2
+BLIND_RANDOM_BUCKETS = 4
 TASK_SCORE_BINS = 4
 TASK_QTY_BINS = 4
+TASK_COST_BINS = 4
 FR_STEP_SUMMARY_BINS = 10
 PSEUDOCOUNT = 1e-6
 MIN_POSITIVE_VALUE = 1e-3
 EPS = 1e-8
+
+CHANNEL_ORDER = ["blind", "coarse", "task"]
+CHANNEL_LABELS = {
+    "blind": "Weak blind",
+    "coarse": "Coarse score",
+    "task": "Task-aligned",
+}
+CHANNEL_DEFINITIONS = {
+    "blind": "2 predicted-price bins x 4 deterministic random row buckets; buckets are fixed from row identity and unrelated to feedback-targeted variables.",
+    "coarse": "5 quantile bins of deployed predicted Unit Price, with bin edges fixed from D_0 baseline predictions.",
+    "task": "5 predicted-price bins x 4 Order Quantity bins x 4 Unit Cost bins x binary Sales Channel subgroup; score bins match the coarse channel and all bins are fixed from D_0.",
+}
 
 
 # -----------------------------
@@ -256,26 +273,49 @@ def predict_model(model: Pipeline, df_eval: pd.DataFrame) -> np.ndarray:
 
 @dataclass
 class ChannelArtifacts:
+    blind_score_edges: np.ndarray
     coarse_score_edges: np.ndarray
     task_score_edges: np.ndarray
     task_qty_edges: np.ndarray
+    task_cost_edges: np.ndarray
     subgroup_ref: str
+    sales_channel_categories: list[str]
 
 
 def fit_channel_artifacts(df0: pd.DataFrame, preds0: np.ndarray) -> ChannelArtifacts:
+    blind_score_edges = compute_quantile_edges(preds0, BLIND_SCORE_BINS)
     coarse_score_edges = compute_quantile_edges(preds0, COARSE_SCORE_BINS)
     task_score_edges = compute_quantile_edges(preds0, TASK_SCORE_BINS)
     task_qty_edges = compute_quantile_edges(df0[QUANTITY_COL].to_numpy(), TASK_QTY_BINS)
+    task_cost_edges = compute_quantile_edges(df0[COST_COL].to_numpy(), TASK_COST_BINS)
 
     mode_value = df0[GROUP_COL].mode(dropna=True)
     subgroup_ref = str(mode_value.iloc[0] if len(mode_value) else df0[GROUP_COL].iloc[0])
+    sales_channel_categories = sorted(df0[GROUP_COL].astype(str).unique())
 
     return ChannelArtifacts(
+        blind_score_edges=blind_score_edges,
         coarse_score_edges=coarse_score_edges,
         task_score_edges=task_score_edges,
         task_qty_edges=task_qty_edges,
+        task_cost_edges=task_cost_edges,
         subgroup_ref=subgroup_ref,
+        sales_channel_categories=sales_channel_categories,
     )
+
+
+def fixed_random_buckets(n_rows: int, n_buckets: int) -> np.ndarray:
+    row_ids = np.arange(n_rows, dtype=np.uint64)
+    hashed = row_ids * np.uint64(11400714819323198485) + np.uint64(0x9E3779B97F4A7C15)
+    return np.asarray(hashed % np.uint64(n_buckets), dtype=int)
+
+
+def blind_channel_probs(df: pd.DataFrame, preds: np.ndarray, artifacts: ChannelArtifacts) -> np.ndarray:
+    score_bin = assign_bins(preds, artifacts.blind_score_edges)
+    random_bin = fixed_random_buckets(len(df), BLIND_RANDOM_BUCKETS)
+    state_ids = score_bin * BLIND_RANDOM_BUCKETS + random_bin
+    n_states = (len(artifacts.blind_score_edges) - 1) * BLIND_RANDOM_BUCKETS
+    return empirical_categorical_distribution(state_ids, n_states, PSEUDOCOUNT)
 
 
 def coarse_channel_probs(preds: np.ndarray, artifacts: ChannelArtifacts) -> np.ndarray:
@@ -285,16 +325,23 @@ def coarse_channel_probs(preds: np.ndarray, artifacts: ChannelArtifacts) -> np.n
 
 
 def task_channel_probs(df: pd.DataFrame, preds: np.ndarray, artifacts: ChannelArtifacts) -> np.ndarray:
-    score_bin = assign_bins(preds, artifacts.task_score_edges)
+    score_bin = assign_bins(preds, artifacts.coarse_score_edges)
     qty_bin = assign_bins(df[QUANTITY_COL].to_numpy(), artifacts.task_qty_edges)
+    cost_bin = assign_bins(df[COST_COL].to_numpy(), artifacts.task_cost_edges)
     group_bin = (df[GROUP_COL].astype(str).to_numpy() != artifacts.subgroup_ref).astype(int)
 
-    n_score = len(artifacts.task_score_edges) - 1
+    n_score = len(artifacts.coarse_score_edges) - 1
     n_qty = len(artifacts.task_qty_edges) - 1
+    n_cost = len(artifacts.task_cost_edges) - 1
     n_group = 2
 
-    state_ids = score_bin * (n_qty * n_group) + qty_bin * n_group + group_bin
-    n_states = n_score * n_qty * n_group
+    state_ids = (
+        score_bin * (n_qty * n_cost * n_group)
+        + qty_bin * (n_cost * n_group)
+        + cost_bin * n_group
+        + group_bin
+    )
+    n_states = n_score * n_qty * n_cost * n_group
     return empirical_categorical_distribution(state_ids, n_states, PSEUDOCOUNT)
 
 
@@ -447,12 +494,15 @@ def run_single_condition(
         sampling_candidate = abs(current_all_mse - eval_mse_current)
 
         # Observable channel probabilities and FR step lengths.
+        blind_p = blind_channel_probs(df_current, preds_current_all, artifacts)
         coarse_p = coarse_channel_probs(preds_current_all, artifacts)
         task_p = task_channel_probs(df_current, preds_current_all, artifacts)
 
+        blind_q = blind_channel_probs(df_next, preds_next_all_same_model, artifacts)
         coarse_q = coarse_channel_probs(preds_next_all_same_model, artifacts)
         task_q = task_channel_probs(df_next, preds_next_all_same_model, artifacts)
 
+        fr_step_blind = fisher_rao_categorical(blind_p, blind_q)
         fr_step_coarse = fisher_rao_categorical(coarse_p, coarse_q)
         fr_step_task = fisher_rao_categorical(task_p, task_q)
 
@@ -471,6 +521,7 @@ def run_single_condition(
                 "delta_rep": delta_rep,
                 "v_t": v_t,
                 "sampling_candidate": sampling_candidate,
+                "fr_step_blind": fr_step_blind,
                 "fr_step_coarse": fr_step_coarse,
                 "fr_step_task": fr_step_task,
             }
@@ -494,6 +545,9 @@ def run_single_condition(
             "delta_rep",
             "v_t",
             "sampling_candidate",
+            "fr_step_blind",
+            "fr_step_coarse",
+            "fr_step_task",
         ]
         rr[round_cols].to_csv(round_records_outpath, index=False)
     if round_records_sink is not None:
@@ -506,8 +560,10 @@ def run_single_condition(
         "V_T": float(rr["v_t"].mean()),
         "mean_current_rmse": float(rr["current_rmse"].mean()),
         "mean_next_rmse": float(rr["next_rmse"].mean()),
+        "A_T_blind": float(rr["fr_step_blind"].sum()),
         "A_T_coarse": float(rr["fr_step_coarse"].sum()),
         "A_T_task": float(rr["fr_step_task"].sum()),
+        "A_rate_blind": float(rr["fr_step_blind"].mean()),
         "A_rate_coarse": float(rr["fr_step_coarse"].mean()),
         "A_rate_task": float(rr["fr_step_task"].mean()),
     }
@@ -519,16 +575,18 @@ def run_single_condition(
 
 
 def summarize_results(results_df: pd.DataFrame) -> pd.DataFrame:
-    summary = results_df.groupby("mu").agg(
-        Delta_rep_T_mean=("Delta_rep_T", "mean"),
-        Delta_rep_T_std=("Delta_rep_T", "std"),
-        V_T_mean=("V_T", "mean"),
-        V_T_std=("V_T", "std"),
-        A_rate_coarse_mean=("A_rate_coarse", "mean"),
-        A_rate_coarse_std=("A_rate_coarse", "std"),
-        A_rate_task_mean=("A_rate_task", "mean"),
-        A_rate_task_std=("A_rate_task", "std"),
-    ).reset_index()
+    agg_spec = {
+        "Delta_rep_T_mean": ("Delta_rep_T", "mean"),
+        "Delta_rep_T_std": ("Delta_rep_T", "std"),
+        "V_T_mean": ("V_T", "mean"),
+        "V_T_std": ("V_T", "std"),
+    }
+    for channel in CHANNEL_ORDER:
+        agg_spec[f"A_rate_{channel}_mean"] = (f"A_rate_{channel}", "mean")
+        agg_spec[f"A_rate_{channel}_std"] = (f"A_rate_{channel}", "std")
+        agg_spec[f"A_rate_{channel}_excess_mean"] = (f"A_rate_{channel}_excess", "mean")
+        agg_spec[f"A_rate_{channel}_excess_std"] = (f"A_rate_{channel}_excess", "std")
+    summary = results_df.groupby("mu").agg(**agg_spec).reset_index()
     return summary
 
 
@@ -602,6 +660,348 @@ def write_binned_fr_summaries(round_df: pd.DataFrame) -> None:
         )
 
 
+def safe_corr(x: pd.Series, y: pd.Series, method: str) -> float:
+    if x.nunique(dropna=True) < 2 or y.nunique(dropna=True) < 2:
+        return 0.0
+    value = pd.Series(x).corr(pd.Series(y), method=method)
+    if pd.isna(value):
+        return 0.0
+    return float(value)
+
+
+def add_excess_fr_rates(results_df: pd.DataFrame) -> pd.DataFrame:
+    df = results_df.copy()
+    baseline = df[df["mu"] == 0.0].set_index("seed")
+    for channel in CHANNEL_ORDER:
+        rate_col = f"A_rate_{channel}"
+        baseline_by_seed = baseline[rate_col]
+        df[f"{rate_col}_baseline"] = df["seed"].map(baseline_by_seed)
+        df[f"{rate_col}_excess"] = df[rate_col] - df[f"{rate_col}_baseline"]
+    return df
+
+
+def linear_slope(x: pd.Series, y: pd.Series) -> float:
+    x_arr = np.asarray(x, dtype=float)
+    y_arr = np.asarray(y, dtype=float)
+    x_var = float(np.var(x_arr))
+    if x_var <= EPS:
+        return 0.0
+    return float(np.cov(x_arr, y_arr, ddof=0)[0, 1] / x_var)
+
+
+def build_channel_comparison_table(results_df: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    mu_min = float(results_df["mu"].min())
+    mu_max = float(results_df["mu"].max())
+    for channel in CHANNEL_ORDER:
+        rate_col = f"A_rate_{channel}"
+        excess_col = f"A_rate_{channel}_excess"
+        rate_by_mu = results_df.groupby("mu")[rate_col].mean()
+        excess_by_mu = results_df.groupby("mu")[excess_col].mean()
+        spearman_gap = safe_corr(results_df[excess_col], results_df["Delta_rep_T"], method="spearman")
+        spearman_vt = safe_corr(results_df[excess_col], results_df["V_T"], method="spearman")
+        pearson_gap = safe_corr(results_df[excess_col], results_df["Delta_rep_T"], method="pearson")
+        pearson_vt = safe_corr(results_df[excess_col], results_df["V_T"], method="pearson")
+        slope_gap = linear_slope(results_df[excess_col], results_df["Delta_rep_T"])
+        slope_vt = linear_slope(results_df[excess_col], results_df["V_T"])
+        slope_excess_per_gap = linear_slope(results_df["Delta_rep_T"], results_df[excess_col])
+        slope_excess_per_vt = linear_slope(results_df["V_T"], results_df[excess_col])
+        baseline_rate = float(rate_by_mu.loc[mu_min])
+        raw_response = float(rate_by_mu.loc[mu_max] - rate_by_mu.loc[mu_min])
+        excess_response = float(excess_by_mu.loc[mu_max])
+        baseline_to_excess_ratio = float(baseline_rate / max(abs(excess_response), EPS))
+        association_score = float((abs(spearman_gap) + abs(spearman_vt)) / 2.0)
+        feedback_sensitivity_score = float(excess_response * association_score / (1.0 + baseline_to_excess_ratio))
+        rows.append(
+            {
+                "channel": channel,
+                "label": CHANNEL_LABELS[channel],
+                "definition": CHANNEL_DEFINITIONS[channel],
+                "raw_FR_rate_mu0": baseline_rate,
+                "raw_FR_rate_mu_max": float(rate_by_mu.loc[mu_max]),
+                "excess_FR_mu_max": excess_response,
+                "raw_FR_response_mu_max_minus_mu0": raw_response,
+                "baseline_to_excess_ratio": baseline_to_excess_ratio,
+                "fr_rate_std_across_runs": float(results_df[rate_col].std()),
+                "pearson_excess_with_Delta_rep_T": pearson_gap,
+                "spearman_excess_with_Delta_rep_T": spearman_gap,
+                "pearson_excess_with_V_T": pearson_vt,
+                "spearman_excess_with_V_T": spearman_vt,
+                "slope_Delta_rep_T_per_excess_FR": slope_gap,
+                "slope_V_T_per_excess_FR": slope_vt,
+                "slope_excess_FR_per_Delta_rep_T": slope_excess_per_gap,
+                "slope_excess_FR_per_V_T": slope_excess_per_vt,
+                "association_score": association_score,
+                "feedback_sensitivity_score": feedback_sensitivity_score,
+            }
+        )
+    comparison = pd.DataFrame(rows)
+    comparison["feedback_sensitivity_rank"] = comparison["feedback_sensitivity_score"].rank(method="dense").astype(int)
+    return comparison.sort_values(["feedback_sensitivity_score", "excess_FR_mu_max"]).reset_index(drop=True)
+
+
+def build_round_channel_long(round_df: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for channel in CHANNEL_ORDER:
+        fr_col = f"fr_step_{channel}"
+        channel_df = round_df[["round", "mu", "seed", "delta_rep", "v_t", fr_col]].copy()
+        channel_df = channel_df.rename(columns={fr_col: "observable_fr_step"})
+        channel_df["channel"] = channel
+        channel_df["channel_label"] = CHANNEL_LABELS[channel]
+        rows.append(channel_df)
+    long_df = pd.concat(rows, ignore_index=True)
+    long_df["observable_fr_step_z_within_channel"] = long_df.groupby("channel")["observable_fr_step"].transform(
+        lambda s: (s - s.mean()) / (s.std(ddof=0) + EPS)
+    )
+    return long_df
+
+
+def fit_ols(y: np.ndarray, X: np.ndarray, term_names: list[str]) -> dict:
+    y = np.asarray(y, dtype=float)
+    X = np.asarray(X, dtype=float)
+    n_obs, n_terms = X.shape
+    beta, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*encountered in matmul", category=RuntimeWarning)
+        fitted = X @ beta
+    resid = y - fitted
+    rss = float(np.sum(resid**2))
+    tss = float(np.sum((y - np.mean(y)) ** 2))
+    df_resid = max(n_obs - n_terms, 1)
+    sigma2 = rss / df_resid
+    cov = sigma2 * np.linalg.pinv(X.T @ X)
+    se = np.sqrt(np.clip(np.diag(cov), 0.0, None))
+    t_values = np.divide(beta, se, out=np.zeros_like(beta), where=se > 0)
+    p_values = 2.0 * stats.t.sf(np.abs(t_values), df_resid)
+    r2 = 1.0 - rss / tss if tss > 0 else 0.0
+    adj_r2 = 1.0 - (1.0 - r2) * (n_obs - 1) / df_resid if n_obs > 1 else r2
+    return {
+        "n_obs": n_obs,
+        "df_model": n_terms - 1,
+        "df_resid": df_resid,
+        "rss": rss,
+        "r2": float(r2),
+        "adj_r2": float(adj_r2),
+        "terms": pd.DataFrame(
+            {
+                "term": term_names,
+                "coef": beta,
+                "std_err": se,
+                "t": t_values,
+                "p_value": p_values,
+            }
+        ),
+    }
+
+
+def partial_f_test(reduced: dict, full: dict) -> tuple[float, float]:
+    df_num = full["df_resid"] - reduced["df_resid"]
+    if df_num >= 0:
+        df_num = full["df_model"] - reduced["df_model"]
+    df_num = int(max(df_num, 1))
+    rss_reduced = reduced["rss"]
+    rss_full = full["rss"]
+    df_den = int(full["df_resid"])
+    if rss_full <= 0 or rss_reduced < rss_full:
+        return 0.0, 1.0
+    f_stat = ((rss_reduced - rss_full) / df_num) / (rss_full / df_den)
+    p_value = float(stats.f.sf(f_stat, df_num, df_den))
+    return float(f_stat), p_value
+
+
+def design_mu(df: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
+    return np.column_stack([np.ones(len(df)), df["mu"].to_numpy(dtype=float)]), ["intercept", "mu"]
+
+
+def design_mu_fr(df: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
+    return (
+        np.column_stack([
+            np.ones(len(df)),
+            df["mu"].to_numpy(dtype=float),
+            df["observable_fr_step"].to_numpy(dtype=float),
+        ]),
+        ["intercept", "mu", "observable_fr_step"],
+    )
+
+
+def design_mu_fr_z(df: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
+    return (
+        np.column_stack([
+            np.ones(len(df)),
+            df["mu"].to_numpy(dtype=float),
+            df["observable_fr_step_z_within_channel"].to_numpy(dtype=float),
+        ]),
+        ["intercept", "mu", "observable_fr_step_z_within_channel"],
+    )
+
+
+def design_mu_fr_channel_interactions(df: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
+    channels = list(CHANNEL_ORDER)
+    base = channels[0]
+    cols = [
+        np.ones(len(df)),
+        df["mu"].to_numpy(dtype=float),
+        df["observable_fr_step"].to_numpy(dtype=float),
+    ]
+    names = ["intercept", "mu", "observable_fr_step"]
+    for channel in channels[1:]:
+        indicator = (df["channel"].to_numpy() == channel).astype(float)
+        cols.append(indicator)
+        names.append(f"channel_{channel}")
+    for channel in channels[1:]:
+        indicator = (df["channel"].to_numpy() == channel).astype(float)
+        cols.append(df["observable_fr_step"].to_numpy(dtype=float) * indicator)
+        names.append(f"observable_fr_step_x_{channel}")
+    names[2] = f"observable_fr_step_{base}"
+    return np.column_stack(cols), names
+
+
+def write_regression_analysis(round_df: pd.DataFrame) -> None:
+    long_df = build_round_channel_long(round_df)
+    long_df.to_csv(OUTPUT_DIR / "regional_feedback_round_channel_long.csv", index=False)
+
+    per_channel_rows = []
+    per_channel_z_rows = []
+    model_rows = []
+    improvement_rows = []
+    interaction_rows = []
+
+    for target in ["v_t", "delta_rep"]:
+        for channel in CHANNEL_ORDER:
+            df_ch = long_df[long_df["channel"] == channel].copy()
+            y = df_ch[target].to_numpy(dtype=float)
+            X_mu, terms_mu = design_mu(df_ch)
+            X_mu_fr, terms_mu_fr = design_mu_fr(df_ch)
+            X_mu_fr_z, terms_mu_fr_z = design_mu_fr_z(df_ch)
+            model_mu = fit_ols(y, X_mu, terms_mu)
+            model_mu_fr = fit_ols(y, X_mu_fr, terms_mu_fr)
+            model_mu_fr_z = fit_ols(y, X_mu_fr_z, terms_mu_fr_z)
+            f_stat, p_value = partial_f_test(model_mu, model_mu_fr)
+            f_stat_z, p_value_z = partial_f_test(model_mu, model_mu_fr_z)
+            fr_term = model_mu_fr["terms"][model_mu_fr["terms"]["term"] == "observable_fr_step"].iloc[0]
+            fr_z_term = model_mu_fr_z["terms"][
+                model_mu_fr_z["terms"]["term"] == "observable_fr_step_z_within_channel"
+            ].iloc[0]
+            per_channel_rows.append(
+                {
+                    "target": target,
+                    "channel": channel,
+                    "channel_label": CHANNEL_LABELS[channel],
+                    "fr_coef_controlling_mu": fr_term["coef"],
+                    "fr_std_err": fr_term["std_err"],
+                    "fr_t": fr_term["t"],
+                    "fr_p_value": fr_term["p_value"],
+                    "fr_positive": bool(fr_term["coef"] > 0),
+                    "fr_positive_p_lt_0_05": bool(fr_term["coef"] > 0 and fr_term["p_value"] < 0.05),
+                    "r2_mu_only": model_mu["r2"],
+                    "r2_mu_plus_fr": model_mu_fr["r2"],
+                    "delta_r2_from_fr": model_mu_fr["r2"] - model_mu["r2"],
+                    "partial_f_for_fr": f_stat,
+                    "partial_f_p_value": p_value,
+                }
+            )
+            per_channel_z_rows.append(
+                {
+                    "target": target,
+                    "channel": channel,
+                    "channel_label": CHANNEL_LABELS[channel],
+                    "standardized_fr_coef_controlling_mu": fr_z_term["coef"],
+                    "standardized_fr_std_err": fr_z_term["std_err"],
+                    "standardized_fr_t": fr_z_term["t"],
+                    "standardized_fr_p_value": fr_z_term["p_value"],
+                    "standardized_fr_positive": bool(fr_z_term["coef"] > 0),
+                    "standardized_fr_positive_p_lt_0_05": bool(fr_z_term["coef"] > 0 and fr_z_term["p_value"] < 0.05),
+                    "r2_mu_only": model_mu["r2"],
+                    "r2_mu_plus_standardized_fr": model_mu_fr_z["r2"],
+                    "delta_r2_from_standardized_fr": model_mu_fr_z["r2"] - model_mu["r2"],
+                    "partial_f_for_standardized_fr": f_stat_z,
+                    "partial_f_p_value": p_value_z,
+                }
+            )
+
+        y_all = long_df[target].to_numpy(dtype=float)
+        X_mu, terms_mu = design_mu(long_df)
+        X_mu_fr, terms_mu_fr = design_mu_fr(long_df)
+        X_int, terms_int = design_mu_fr_channel_interactions(long_df)
+        models = {
+            "mu_only": fit_ols(y_all, X_mu, terms_mu),
+            "mu_plus_fr": fit_ols(y_all, X_mu_fr, terms_mu_fr),
+            "mu_plus_fr_channel_interactions": fit_ols(y_all, X_int, terms_int),
+        }
+        for model_name, model in models.items():
+            model_rows.append(
+                {
+                    "target": target,
+                    "model": model_name,
+                    "n_obs": model["n_obs"],
+                    "df_model": model["df_model"],
+                    "df_resid": model["df_resid"],
+                    "rss": model["rss"],
+                    "r2": model["r2"],
+                    "adj_r2": model["adj_r2"],
+                }
+            )
+        for reduced_name, full_name in [
+            ("mu_only", "mu_plus_fr"),
+            ("mu_plus_fr", "mu_plus_fr_channel_interactions"),
+        ]:
+            f_stat, p_value = partial_f_test(models[reduced_name], models[full_name])
+            improvement_rows.append(
+                {
+                    "target": target,
+                    "reduced_model": reduced_name,
+                    "full_model": full_name,
+                    "delta_r2": models[full_name]["r2"] - models[reduced_name]["r2"],
+                    "partial_f": f_stat,
+                    "partial_f_p_value": p_value,
+                }
+            )
+        terms = models["mu_plus_fr_channel_interactions"]["terms"]
+        base_coef = float(terms.loc[terms["term"] == "observable_fr_step_blind", "coef"].iloc[0])
+        for channel in CHANNEL_ORDER:
+            if channel == CHANNEL_ORDER[0]:
+                slope = base_coef
+                interaction_coef = 0.0
+                interaction_p = np.nan
+            else:
+                term_name = f"observable_fr_step_x_{channel}"
+                row = terms.loc[terms["term"] == term_name].iloc[0]
+                interaction_coef = float(row["coef"])
+                interaction_p = float(row["p_value"])
+                slope = base_coef + interaction_coef
+            interaction_rows.append(
+                {
+                    "target": target,
+                    "channel": channel,
+                    "channel_label": CHANNEL_LABELS[channel],
+                    "channel_fr_slope": slope,
+                    "interaction_vs_blind_coef": interaction_coef,
+                    "interaction_vs_blind_p_value": interaction_p,
+                }
+            )
+
+    pd.DataFrame(per_channel_rows).to_csv(OUTPUT_DIR / "table_3_channel_regressions.csv", index=False)
+    pd.DataFrame(per_channel_z_rows).to_csv(
+        OUTPUT_DIR / "table_3b_channel_regressions_standardized_fr.csv",
+        index=False,
+    )
+    pd.DataFrame(model_rows).to_csv(OUTPUT_DIR / "table_4_regression_model_comparison.csv", index=False)
+    pd.DataFrame(improvement_rows).to_csv(OUTPUT_DIR / "table_5_regression_fit_improvements.csv", index=False)
+    pd.DataFrame(interaction_rows).to_csv(OUTPUT_DIR / "table_6_channel_interaction_slopes.csv", index=False)
+
+
+def write_channel_definitions() -> None:
+    lines = [
+        "This real-data experiment is an applied robustness / partial-observability check.",
+        "It is not a direct contraction-theorem test and does not estimate intrinsic C_T/T.",
+        "",
+        "Channels:",
+    ]
+    for channel in CHANNEL_ORDER:
+        lines.append(f"- {CHANNEL_LABELS[channel]}: {CHANNEL_DEFINITIONS[channel]}")
+    (OUTPUT_DIR / "channel_definitions.txt").write_text("\n".join(lines), encoding="utf-8")
+
+
 def make_plots(results_df: pd.DataFrame, summary_df: pd.DataFrame, round_df: pd.DataFrame) -> None:
     plot_errorbar(
         summary_df["mu"],
@@ -625,19 +1025,23 @@ def make_plots(results_df: pd.DataFrame, summary_df: pd.DataFrame, round_df: pd.
 
     plt.figure(figsize=(5.2, 3.6))
     plt.errorbar(
-        summary_df["mu"], summary_df["A_rate_coarse_mean"], yerr=summary_df["A_rate_coarse_std"],
+        summary_df["mu"], summary_df["A_rate_blind_excess_mean"], yerr=summary_df["A_rate_blind_excess_std"],
+        marker="x", capsize=4, label="Blind channel"
+    )
+    plt.errorbar(
+        summary_df["mu"], summary_df["A_rate_coarse_excess_mean"], yerr=summary_df["A_rate_coarse_excess_std"],
         marker="o", capsize=4, label="Coarse channel"
     )
     plt.errorbar(
-        summary_df["mu"], summary_df["A_rate_task_mean"], yerr=summary_df["A_rate_task_std"],
+        summary_df["mu"], summary_df["A_rate_task_excess_mean"], yerr=summary_df["A_rate_task_excess_std"],
         marker="o", capsize=4, label="Task-aligned channel"
     )
     plt.xlabel("Feedback strength $\\mu$")
-    plt.ylabel("Average observable FR rate")
-    plt.title("Observable Fisher rate vs feedback strength")
+    plt.ylabel("Excess observable FR rate over $\\mu=0$")
+    plt.title("Baseline-corrected observable Fisher rate")
     plt.legend(frameon=False)
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / "figure_3_fr_rate_vs_mu.png", dpi=200)
+    plt.savefig(OUTPUT_DIR / "figure_3_excess_fr_rate_vs_mu.png", dpi=200)
     plt.close()
 
     plot_binned_fr_degradation(
@@ -725,7 +1129,7 @@ def main() -> None:
             )
             results.append(result)
 
-    results_df = pd.DataFrame(results)
+    results_df = add_excess_fr_rates(pd.DataFrame(results))
     round_df = pd.DataFrame(round_records)
     summary_df = summarize_results(results_df)
 
@@ -734,33 +1138,38 @@ def main() -> None:
     summary_df.to_csv(OUTPUT_DIR / "regional_feedback_summary.csv", index=False)
     summary_df.to_csv(OUTPUT_DIR / "table_1_summary.csv", index=False)
 
-    # Simple correlation table.
+    # Channel comparison table for the partial-observability robustness check.
     corr_rows = []
-    for ch_name in ["coarse", "task"]:
-        x = results_df[f"A_rate_{ch_name}"]
+    for ch_name in CHANNEL_ORDER:
+        x = results_df[f"A_rate_{ch_name}_excess"]
         y_gap = results_df["Delta_rep_T"]
         y_vt = results_df["V_T"]
         corr_rows.append(
             {
                 "channel": ch_name,
-                "pearson_with_gap": float(pd.Series(x).corr(pd.Series(y_gap), method="pearson")),
-                "spearman_with_gap": float(pd.Series(x).corr(pd.Series(y_gap), method="spearman")),
-                "pearson_with_vt": float(pd.Series(x).corr(pd.Series(y_vt), method="pearson")),
-                "spearman_with_vt": float(pd.Series(x).corr(pd.Series(y_vt), method="spearman")),
+                "label": CHANNEL_LABELS[ch_name],
+                "pearson_excess_with_gap": safe_corr(x, y_gap, method="pearson"),
+                "spearman_excess_with_gap": safe_corr(x, y_gap, method="spearman"),
+                "pearson_excess_with_vt": safe_corr(x, y_vt, method="pearson"),
+                "spearman_excess_with_vt": safe_corr(x, y_vt, method="spearman"),
             }
         )
     corr_df = pd.DataFrame(corr_rows)
+    channel_comparison_df = build_channel_comparison_table(results_df)
     corr_df.to_csv(OUTPUT_DIR / "regional_feedback_correlations.csv", index=False)
     corr_df.to_csv(OUTPUT_DIR / "table_2_correlations.csv", index=False)
+    channel_comparison_df.to_csv(OUTPUT_DIR / "table_2_channel_comparison.csv", index=False)
 
+    write_channel_definitions()
+    write_regression_analysis(round_df)
     write_binned_fr_summaries(round_df)
     make_plots(results_df, summary_df, round_df)
 
     print("\nSaved outputs to:", OUTPUT_DIR)
     print("\nSummary:")
     print(summary_df.to_string(index=False))
-    print("\nChannel correlations:")
-    print(corr_df.to_string(index=False))
+    print("\nChannel comparison:")
+    print(channel_comparison_df.to_string(index=False))
 
 
 if __name__ == "__main__":
