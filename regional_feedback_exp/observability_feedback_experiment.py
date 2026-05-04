@@ -57,6 +57,7 @@ NOISE_SCALE_Y = 0.02
 COARSE_SCORE_BINS = 5
 TASK_SCORE_BINS = 4
 TASK_QTY_BINS = 4
+FR_STEP_SUMMARY_BINS = 10
 PSEUDOCOUNT = 1e-6
 MIN_POSITIVE_VALUE = 1e-3
 EPS = 1e-8
@@ -544,6 +545,63 @@ def plot_errorbar(x, y, yerr, xlabel, ylabel, title, outpath, label=None):
     plt.close()
 
 
+def binned_fr_summary(round_df: pd.DataFrame, fr_col: str, y_col: str, n_bins: int) -> pd.DataFrame:
+    values = round_df[[fr_col, y_col]].replace([np.inf, -np.inf], np.nan).dropna().copy()
+    values = values.sort_values(fr_col).reset_index(drop=True)
+    values["bin"] = pd.qcut(values[fr_col], q=n_bins, labels=False, duplicates="drop")
+    summary = values.groupby("bin", observed=True).agg(
+        fr_mid=(fr_col, "median"),
+        y_median=(y_col, "median"),
+        y_q25=(y_col, lambda s: float(np.quantile(s, 0.25))),
+        y_q75=(y_col, lambda s: float(np.quantile(s, 0.75))),
+        n=(y_col, "size"),
+    ).reset_index(drop=True)
+    return summary
+
+
+def plot_binned_fr_degradation(round_df: pd.DataFrame, y_col: str, ylabel: str, title: str, outpath: Path) -> None:
+    plt.figure(figsize=(5.4, 3.8))
+    for fr_col, label, marker in [
+        ("fr_step_coarse", "Coarse channel", "o"),
+        ("fr_step_task", "Task-aligned channel", "s"),
+    ]:
+        summary = binned_fr_summary(round_df, fr_col, y_col, FR_STEP_SUMMARY_BINS)
+        yerr = np.vstack([
+            summary["y_median"] - summary["y_q25"],
+            summary["y_q75"] - summary["y_median"],
+        ])
+        plt.errorbar(
+            summary["fr_mid"],
+            summary["y_median"],
+            yerr=yerr,
+            marker=marker,
+            capsize=3,
+            linewidth=1.4,
+            label=label,
+        )
+    plt.xlabel("Observable FR step")
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.legend(frameon=False)
+    plt.tight_layout()
+    plt.savefig(outpath, dpi=200)
+    plt.close()
+
+
+def write_binned_fr_summaries(round_df: pd.DataFrame) -> None:
+    for y_col in ["v_t", "delta_rep"]:
+        rows = []
+        for fr_col, channel in [("fr_step_coarse", "coarse"), ("fr_step_task", "task")]:
+            summary = binned_fr_summary(round_df, fr_col, y_col, FR_STEP_SUMMARY_BINS)
+            summary.insert(0, "channel", channel)
+            summary.insert(1, "y_col", y_col)
+            rows.append(summary)
+        pd.concat(rows, ignore_index=True).to_csv(
+            OUTPUT_DIR / f"binned_fr_{y_col}_summary.csv",
+            index=False,
+        )
+
+
 def make_plots(results_df: pd.DataFrame, summary_df: pd.DataFrame, round_df: pd.DataFrame) -> None:
     plot_errorbar(
         summary_df["mu"],
@@ -582,16 +640,20 @@ def make_plots(results_df: pd.DataFrame, summary_df: pd.DataFrame, round_df: pd.
     plt.savefig(OUTPUT_DIR / "figure_3_fr_rate_vs_mu.png", dpi=200)
     plt.close()
 
-    plt.figure(figsize=(5.4, 3.8))
-    plt.scatter(round_df["fr_step_coarse"], round_df["delta_rep"], alpha=0.35, s=18, label="Coarse channel")
-    plt.scatter(round_df["fr_step_task"], round_df["delta_rep"], alpha=0.35, s=18, label="Task-aligned channel")
-    plt.xlabel("Round-level observable FR step")
-    plt.ylabel(r"Round-level $\delta_t^{rep}$")
-    plt.title("Round-level observable FR step vs prequential gap")
-    plt.legend(frameon=False)
-    plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / "figure_4_fr_vs_gap_scatter.png", dpi=200)
-    plt.close()
+    plot_binned_fr_degradation(
+        round_df=round_df,
+        y_col="v_t",
+        ylabel=r"Median round-level $v_t$",
+        title="Binned observable FR step vs drift",
+        outpath=OUTPUT_DIR / "figure_4_fr_vs_degradation_binned.png",
+    )
+    plot_binned_fr_degradation(
+        round_df=round_df,
+        y_col="delta_rep",
+        ylabel=r"Median round-level $\delta_t^{rep}$",
+        title="Binned observable FR step vs prequential gap",
+        outpath=OUTPUT_DIR / "figure_4_fr_vs_gap_binned.png",
+    )
 
 
 def write_dataset_profile(df: pd.DataFrame) -> None:
@@ -691,6 +753,7 @@ def main() -> None:
     corr_df.to_csv(OUTPUT_DIR / "regional_feedback_correlations.csv", index=False)
     corr_df.to_csv(OUTPUT_DIR / "table_2_correlations.csv", index=False)
 
+    write_binned_fr_summaries(round_df)
     make_plots(results_df, summary_df, round_df)
 
     print("\nSaved outputs to:", OUTPUT_DIR)
