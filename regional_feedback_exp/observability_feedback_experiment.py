@@ -387,6 +387,7 @@ def run_single_condition(
     scales: FeedbackScales,
     ridge_alpha: float,
     round_records_outpath: Path | None = None,
+    round_records_sink: list[dict] | None = None,
 ) -> dict:
     rng = np.random.default_rng(seed)
     df_current = df0.copy()
@@ -419,22 +420,27 @@ def run_single_condition(
         # Evaluate same rows in next round using row identities.
         next_eval_df = df_next.iloc[eval_df["_row_id"].to_numpy()].copy()
         preds_eval_next = predict_model(model, next_eval_df)
+        preds_next_all_same_model = predict_model(model, df_next)
 
         y_current_all = df_current[TARGET_COL].to_numpy(dtype=float)
         y_train_current = train_df[TARGET_COL].to_numpy(dtype=float)
         y_eval_current = eval_df[TARGET_COL].to_numpy(dtype=float)
+        y_next_all = df_next[TARGET_COL].to_numpy(dtype=float)
         y_eval_next = next_eval_df[TARGET_COL].to_numpy(dtype=float)
 
         train_mse = float(mean_squared_error(y_train_current, preds_train_current))
         current_all_mse = float(mean_squared_error(y_current_all, preds_current_all))
+        next_all_mse = float(mean_squared_error(y_next_all, preds_next_all_same_model))
         eval_mse_current = float(mean_squared_error(y_eval_current, preds_eval_current))
         eval_mse_next = float(mean_squared_error(y_eval_next, preds_eval_next))
         current_rmse = float(np.sqrt(eval_mse_current))
         next_rmse = float(np.sqrt(eval_mse_next))
 
+        # Delta_rep_T: eval-split one-step reproducibility gap.
         delta_rep = abs(eval_mse_current - eval_mse_next)
-        v_t = abs(eval_mse_current - eval_mse_next)
-        # Diagnostic only, not a validated sampling term:
+        # V_T: full-dataset within-step drift under the deployed predictor.
+        v_t = abs(current_all_mse - next_all_mse)
+        # Internal diagnostic only, not a primary experiment quantity:
         # sampling_candidate = |MSE_D_t_all(f_t) - MSE_D_t_eval(f_t)|.
         # This is same-round, but MSE_D_t_all includes train rows used to fit f_t.
         sampling_candidate = abs(current_all_mse - eval_mse_current)
@@ -443,7 +449,6 @@ def run_single_condition(
         coarse_p = coarse_channel_probs(preds_current_all, artifacts)
         task_p = task_channel_probs(df_current, preds_current_all, artifacts)
 
-        preds_next_all_same_model = predict_model(model, df_next)
         coarse_q = coarse_channel_probs(preds_next_all_same_model, artifacts)
         task_q = task_channel_probs(df_next, preds_next_all_same_model, artifacts)
 
@@ -457,6 +462,7 @@ def run_single_condition(
                 "seed": seed,
                 "eval_mse_current": eval_mse_current,
                 "current_all_mse": current_all_mse,
+                "next_all_mse": next_all_mse,
                 "eval_mse_next": eval_mse_next,
                 "train_mse": train_mse,
                 "current_rmse": current_rmse,
@@ -480,6 +486,8 @@ def run_single_condition(
             "mu",
             "seed",
             "train_mse",
+            "current_all_mse",
+            "next_all_mse",
             "eval_mse_current",
             "eval_mse_next",
             "delta_rep",
@@ -487,13 +495,14 @@ def run_single_condition(
             "sampling_candidate",
         ]
         rr[round_cols].to_csv(round_records_outpath, index=False)
+    if round_records_sink is not None:
+        round_records_sink.extend(round_records)
 
     return {
         "mu": mu,
         "seed": seed,
         "Delta_rep_T": float(rr["delta_rep"].mean()),
         "V_T": float(rr["v_t"].mean()),
-        "sampling_candidate_T": float(rr["sampling_candidate"].mean()),
         "mean_current_rmse": float(rr["current_rmse"].mean()),
         "mean_next_rmse": float(rr["next_rmse"].mean()),
         "A_T_coarse": float(rr["fr_step_coarse"].sum()),
@@ -514,8 +523,6 @@ def summarize_results(results_df: pd.DataFrame) -> pd.DataFrame:
         Delta_rep_T_std=("Delta_rep_T", "std"),
         V_T_mean=("V_T", "mean"),
         V_T_std=("V_T", "std"),
-        sampling_candidate_T_mean=("sampling_candidate_T", "mean"),
-        sampling_candidate_T_std=("sampling_candidate_T", "std"),
         A_rate_coarse_mean=("A_rate_coarse", "mean"),
         A_rate_coarse_std=("A_rate_coarse", "std"),
         A_rate_task_mean=("A_rate_task", "mean"),
@@ -537,7 +544,7 @@ def plot_errorbar(x, y, yerr, xlabel, ylabel, title, outpath, label=None):
     plt.close()
 
 
-def make_plots(results_df: pd.DataFrame, summary_df: pd.DataFrame) -> None:
+def make_plots(results_df: pd.DataFrame, summary_df: pd.DataFrame, round_df: pd.DataFrame) -> None:
     plot_errorbar(
         summary_df["mu"],
         summary_df["Delta_rep_T_mean"],
@@ -548,26 +555,15 @@ def make_plots(results_df: pd.DataFrame, summary_df: pd.DataFrame) -> None:
         outpath=OUTPUT_DIR / "figure_1_gap_vs_mu.png",
     )
 
-    plt.figure(figsize=(5.2, 3.6))
-    plt.errorbar(
-        summary_df["mu"], summary_df["V_T_mean"], yerr=summary_df["V_T_std"],
-        marker="o", capsize=4, label="Drift term"
-    )
-    plt.errorbar(
+    plot_errorbar(
         summary_df["mu"],
-        summary_df["sampling_candidate_T_mean"],
-        yerr=summary_df["sampling_candidate_T_std"],
-        marker="s",
-        capsize=4,
-        label="Sampling candidate"
+        summary_df["V_T_mean"],
+        summary_df["V_T_std"],
+        xlabel="Feedback strength $\\mu$",
+        ylabel=r"$V_T$",
+        title="Drift term vs feedback strength",
+        outpath=OUTPUT_DIR / "figure_2_drift_vs_mu.png",
     )
-    plt.xlabel("Feedback strength $\\mu$")
-    plt.ylabel("Aggregate MSE gap")
-    plt.title("Drift term and sampling candidate vs feedback strength")
-    plt.legend(frameon=False)
-    plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / "figure_2_drift_sampling_candidate_vs_mu.png", dpi=200)
-    plt.close()
 
     plt.figure(figsize=(5.2, 3.6))
     plt.errorbar(
@@ -586,12 +582,12 @@ def make_plots(results_df: pd.DataFrame, summary_df: pd.DataFrame) -> None:
     plt.savefig(OUTPUT_DIR / "figure_3_fr_rate_vs_mu.png", dpi=200)
     plt.close()
 
-    plt.figure(figsize=(5.2, 3.6))
-    plt.scatter(results_df["A_rate_coarse"], results_df["Delta_rep_T"], alpha=0.75, label="Coarse channel")
-    plt.scatter(results_df["A_rate_task"], results_df["Delta_rep_T"], alpha=0.75, label="Task-aligned channel")
-    plt.xlabel("Average observable FR rate")
-    plt.ylabel(r"$\Delta_T^{rep}$")
-    plt.title("Observable FR rate vs prequential gap")
+    plt.figure(figsize=(5.4, 3.8))
+    plt.scatter(round_df["fr_step_coarse"], round_df["delta_rep"], alpha=0.35, s=18, label="Coarse channel")
+    plt.scatter(round_df["fr_step_task"], round_df["delta_rep"], alpha=0.35, s=18, label="Task-aligned channel")
+    plt.xlabel("Round-level observable FR step")
+    plt.ylabel(r"Round-level $\delta_t^{rep}$")
+    plt.title("Round-level observable FR step vs prequential gap")
     plt.legend(frameon=False)
     plt.tight_layout()
     plt.savefig(OUTPUT_DIR / "figure_4_fr_vs_gap_scatter.png", dpi=200)
@@ -638,12 +634,6 @@ def main() -> None:
 
     ridge_alpha = choose_ridge_alpha(df0)
     print(f"Chosen Ridge alpha: {ridge_alpha}")
-    print(
-        "Sampling candidate formula (diagnostic, not validated): "
-        "abs(current_all_mse - eval_mse_current), where "
-        "current_all_mse = MSE(Y_t on all rows, f_t(X_t) on all rows) and "
-        "eval_mse_current = MSE(Y_t on eval rows, f_t(X_t) on eval rows)."
-    )
 
     # Fit baseline model and fixed channels from round 0.
     baseline_model = fit_model(df0, alpha=ridge_alpha)
@@ -658,6 +648,7 @@ def main() -> None:
     )
 
     results: list[dict] = []
+    round_records: list[dict] = []
     for mu in MU_GRID:
         for seed in range(N_SEEDS):
             print(f"Running mu={mu:.3f}, seed={seed}")
@@ -668,13 +659,16 @@ def main() -> None:
                 seed=seed,
                 scales=scales,
                 ridge_alpha=ridge_alpha,
+                round_records_sink=round_records,
             )
             results.append(result)
 
     results_df = pd.DataFrame(results)
+    round_df = pd.DataFrame(round_records)
     summary_df = summarize_results(results_df)
 
     results_df.to_csv(OUTPUT_DIR / "regional_feedback_results_by_seed.csv", index=False)
+    round_df.to_csv(OUTPUT_DIR / "regional_feedback_rounds.csv", index=False)
     summary_df.to_csv(OUTPUT_DIR / "regional_feedback_summary.csv", index=False)
     summary_df.to_csv(OUTPUT_DIR / "table_1_summary.csv", index=False)
 
@@ -697,7 +691,7 @@ def main() -> None:
     corr_df.to_csv(OUTPUT_DIR / "regional_feedback_correlations.csv", index=False)
     corr_df.to_csv(OUTPUT_DIR / "table_2_correlations.csv", index=False)
 
-    make_plots(results_df, summary_df)
+    make_plots(results_df, summary_df, round_df)
 
     print("\nSaved outputs to:", OUTPUT_DIR)
     print("\nSummary:")
