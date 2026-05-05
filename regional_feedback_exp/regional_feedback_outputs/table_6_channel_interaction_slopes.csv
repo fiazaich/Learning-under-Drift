@@ -1,7 +1,0 @@
-target,channel,channel_label,channel_fr_slope,interaction_vs_blind_coef,interaction_vs_blind_p_value
-v_t,blind,Weak blind,43392.00771848832,0.0,
-v_t,coarse,Coarse score,9622.764886083052,-33769.24283240527,0.23615886983771708
-v_t,task,Task-aligned,6340.053813080136,-37051.95390540818,0.19191539967709342
-delta_rep,blind,Weak blind,53015.056044880075,0.0,
-delta_rep,coarse,Coarse score,11131.60763710086,-41883.448407779215,0.17845223026543938
-delta_rep,task,Task-aligned,8160.809718998527,-44854.24632588155,0.14799013632686903
