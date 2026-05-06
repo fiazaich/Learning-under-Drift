@@ -86,6 +86,8 @@ MIN_POSITIVE_VALUE = 1e-3
 EPS = 1e-8
 FIGSIZE = (3.4, 2.4)
 SAVEFIG_KW = {}
+N_BOOTSTRAP = 10000
+PAIRWISE_TEST_SEED = 20260505
 
 CHANNEL_ORDER = ["blind", "coarse", "task_no_qty", "task_no_cost", "task_no_group", "task"]
 CHANNEL_LABELS = {
@@ -776,6 +778,108 @@ def build_channel_comparison_table(results_df: pd.DataFrame) -> pd.DataFrame:
     return comparison.sort_values(["feedback_sensitivity_score", "excess_FR_mu_max"]).reset_index(drop=True)
 
 
+def paired_sign_permutation_pvalue(diffs: np.ndarray) -> float:
+    diffs = np.asarray(diffs, dtype=float)
+    diffs = diffs[np.isfinite(diffs)]
+    n = len(diffs)
+    if n == 0:
+        return float("nan")
+
+    observed = abs(float(diffs.mean()))
+    if observed <= EPS:
+        return 1.0
+
+    if n <= 20:
+        masks = np.arange(2**n, dtype=np.uint64)[:, None]
+        bit_positions = np.arange(n, dtype=np.uint64)[None, :]
+        signs = 1.0 - 2.0 * ((masks >> bit_positions) & 1).astype(float)
+        permuted_means = np.sum(signs * diffs[None, :], axis=1) / n
+    else:
+        rng = np.random.default_rng(PAIRWISE_TEST_SEED)
+        signs = rng.choice([-1.0, 1.0], size=(N_BOOTSTRAP, n), replace=True)
+        permuted_means = np.sum(signs * diffs[None, :], axis=1) / n
+
+    return float(np.mean(np.abs(permuted_means) >= observed - EPS))
+
+
+def paired_bootstrap_ci(diffs: np.ndarray, rng: np.random.Generator) -> tuple[float, float]:
+    diffs = np.asarray(diffs, dtype=float)
+    diffs = diffs[np.isfinite(diffs)]
+    n = len(diffs)
+    if n == 0:
+        return float("nan"), float("nan")
+    if n == 1:
+        value = float(diffs[0])
+        return value, value
+    indices = rng.integers(0, n, size=(N_BOOTSTRAP, n))
+    boot_means = diffs[indices].mean(axis=1)
+    ci_low, ci_high = np.percentile(boot_means, [2.5, 97.5])
+    return float(ci_low), float(ci_high)
+
+
+def build_pairwise_excess_tests_table(
+    results_df: pd.DataFrame,
+    comparisons: list[tuple[str, str, str]],
+    *,
+    contrast_label: str,
+) -> pd.DataFrame:
+    rng = np.random.default_rng(PAIRWISE_TEST_SEED)
+    rows = []
+    for mu, mu_df in results_df[results_df["mu"] != 0.0].groupby("mu", sort=True):
+        mu_df = mu_df.sort_values("seed")
+        for comparison, left_channel, right_channel in comparisons:
+            left = mu_df[f"A_rate_{left_channel}_excess"].to_numpy(dtype=float)
+            right = mu_df[f"A_rate_{right_channel}_excess"].to_numpy(dtype=float)
+            diffs = right - left
+            ci_low, ci_high = paired_bootstrap_ci(diffs, rng)
+            rows.append(
+                {
+                    "mu": float(mu),
+                    "comparison": comparison,
+                    "contrast_label": contrast_label,
+                    "left_channel": left_channel,
+                    "right_channel": right_channel,
+                    "left_label": CHANNEL_LABELS[left_channel],
+                    "right_label": CHANNEL_LABELS[right_channel],
+                    "n_seeds": int(len(diffs)),
+                    "left_mean_excess": float(np.mean(left)),
+                    "right_mean_excess": float(np.mean(right)),
+                    "mean_diff_right_minus_left": float(np.mean(diffs)),
+                    "bootstrap_ci95_low": ci_low,
+                    "bootstrap_ci95_high": ci_high,
+                    "permutation_p_two_sided": paired_sign_permutation_pvalue(diffs),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def compact_pairwise_excess_tests_table(pairwise_df: pd.DataFrame) -> pd.DataFrame:
+    compact = pairwise_df[
+        [
+            "mu",
+            "comparison",
+            "left_label",
+            "right_label",
+            "n_seeds",
+            "mean_diff_right_minus_left",
+            "bootstrap_ci95_low",
+            "bootstrap_ci95_high",
+            "permutation_p_two_sided",
+        ]
+    ].copy()
+    compact = compact.rename(
+        columns={
+            "left_label": "baseline_side",
+            "right_label": "comparison_side",
+            "mean_diff_right_minus_left": "mean_diff_excess_fr",
+            "bootstrap_ci95_low": "bootstrap_ci95_low_excess_fr",
+            "bootstrap_ci95_high": "bootstrap_ci95_high_excess_fr",
+            "permutation_p_two_sided": "permutation_p_value_two_sided",
+        }
+    )
+    return compact
+
+
 def write_channel_definitions() -> None:
     lines = [
         "This real-data experiment is an applied robustness / partial-observability check.",
@@ -927,9 +1031,33 @@ def main() -> None:
         )
     corr_df = pd.DataFrame(corr_rows)
     channel_comparison_df = build_channel_comparison_table(results_df)
+    primary_pairwise_tests_df = build_pairwise_excess_tests_table(
+        results_df,
+        comparisons=[
+            ("blind_vs_coarse", "blind", "coarse"),
+            ("coarse_vs_task", "coarse", "task"),
+            ("blind_vs_task", "blind", "task"),
+        ],
+        contrast_label="right_minus_left",
+    )
+    ablation_pairwise_tests_df = build_pairwise_excess_tests_table(
+        results_df,
+        comparisons=[
+            ("full_task_vs_minus_quantity", "task_no_qty", "task"),
+            ("full_task_vs_minus_cost", "task_no_cost", "task"),
+            ("full_task_vs_minus_subgroup", "task_no_group", "task"),
+        ],
+        contrast_label="task_minus_ablation",
+    )
+    primary_pairwise_compact_df = compact_pairwise_excess_tests_table(primary_pairwise_tests_df)
+    ablation_pairwise_compact_df = compact_pairwise_excess_tests_table(ablation_pairwise_tests_df)
     corr_df.to_csv(OUTPUT_DIR / "regional_feedback_correlations.csv", index=False)
     corr_df.to_csv(OUTPUT_DIR / "table_2_correlations.csv", index=False)
     channel_comparison_df.to_csv(OUTPUT_DIR / "table_2_channel_comparison.csv", index=False)
+    primary_pairwise_tests_df.to_csv(OUTPUT_DIR / "table_3_pairwise_excess_tests.csv", index=False)
+    ablation_pairwise_tests_df.to_csv(OUTPUT_DIR / "table_4_ablation_pairwise_excess_tests.csv", index=False)
+    primary_pairwise_compact_df.to_csv(OUTPUT_DIR / "appendix_pairwise_channel_contrasts.csv", index=False)
+    ablation_pairwise_compact_df.to_csv(OUTPUT_DIR / "appendix_pairwise_ablation_contrasts.csv", index=False)
 
     write_channel_definitions()
     make_plots(results_df, summary_df, round_df)
@@ -939,6 +1067,10 @@ def main() -> None:
     print(summary_df.to_string(index=False))
     print("\nChannel comparison:")
     print(channel_comparison_df.to_string(index=False))
+    print("\nPairwise excess Fisher tests:")
+    print(primary_pairwise_compact_df.to_string(index=False))
+    print("\nAblation pairwise excess Fisher tests:")
+    print(ablation_pairwise_compact_df.to_string(index=False))
 
 
 if __name__ == "__main__":
