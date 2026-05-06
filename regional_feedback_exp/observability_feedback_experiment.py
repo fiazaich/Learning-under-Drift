@@ -39,7 +39,7 @@ PALETTE = ["#1f77b4", "#ff7f0e"] + [plt.get_cmap("tab10")(i) for i in range(2, 1
 
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -570,10 +570,18 @@ def run_single_condition(
         current_rmse = float(np.sqrt(eval_mse_current))
         next_rmse = float(np.sqrt(eval_mse_next))
 
-        # Delta_rep_T: eval-split one-step reproducibility gap.
-        delta_rep = abs(eval_mse_current - eval_mse_next)
-        # V_T: full-dataset within-step drift under the deployed predictor.
+        # Trajectory components for the paper's gaps. The empirical loss is
+        # held out on D_t; the two population targets use the full finite
+        # dataset as the experiment's population proxy.
+        empirical_loss = eval_mse_current
+        same_time_target = current_all_mse
+        preq_target = next_all_mse
+
+        # V_T: full-dataset within-step drift under the deployed predictor f_t.
         v_t = abs(current_all_mse - next_all_mse)
+        # Held-out diagnostic only. This is a noisy eval-split version of the
+        # within-step drift term, not Delta_rep_T.
+        eval_within_step_drift = abs(eval_mse_current - eval_mse_next)
         # Internal diagnostic only, not a primary experiment quantity:
         # sampling_candidate = |MSE_D_t_all(f_t) - MSE_D_t_eval(f_t)|.
         # This is same-round, but MSE_D_t_all includes train rows used to fit f_t.
@@ -598,8 +606,11 @@ def run_single_condition(
                 "train_mse": train_mse,
                 "current_rmse": current_rmse,
                 "next_rmse": next_rmse,
-                "delta_rep": delta_rep,
+                "empirical_loss": empirical_loss,
+                "same_time_target": same_time_target,
+                "preq_target": preq_target,
                 "v_t": v_t,
+                "eval_within_step_drift": eval_within_step_drift,
                 "sampling_candidate": sampling_candidate,
                 **{f"fr_step_{channel}": fr_steps[channel] for channel in CHANNEL_ORDER},
             }
@@ -620,8 +631,11 @@ def run_single_condition(
             "next_all_mse",
             "eval_mse_current",
             "eval_mse_next",
-            "delta_rep",
+            "empirical_loss",
+            "same_time_target",
+            "preq_target",
             "v_t",
+            "eval_within_step_drift",
             "sampling_candidate",
             *[f"fr_step_{channel}" for channel in CHANNEL_ORDER],
         ]
@@ -629,11 +643,24 @@ def run_single_condition(
     if round_records_sink is not None:
         round_records_sink.extend(round_records)
 
+    rhat_t = float(rr["empirical_loss"].mean())
+    rplus_t = float(rr["preq_target"].mean())
+    rtraj_t = float(rr["same_time_target"].mean())
+    v_t_mean = float(rr["v_t"].mean())
+    delta_rep_t = abs(rhat_t - rplus_t)
+    delta_sam_t = abs(rhat_t - rtraj_t)
+    eval_within_step_drift_t = float(rr["eval_within_step_drift"].mean())
+
     return {
         "mu": mu,
         "seed": seed,
-        "Delta_rep_T": float(rr["delta_rep"].mean()),
-        "V_T": float(rr["v_t"].mean()),
+        "Rhat_T": rhat_t,
+        "Rplus_T": rplus_t,
+        "Rtraj_T": rtraj_t,
+        "Delta_rep_T": delta_rep_t,
+        "Delta_sam_T": delta_sam_t,
+        "V_T": v_t_mean,
+        "Eval_within_step_drift_T": eval_within_step_drift_t,
         "mean_current_rmse": float(rr["current_rmse"].mean()),
         "mean_next_rmse": float(rr["next_rmse"].mean()),
         **{f"A_T_{channel}": float(rr[f"fr_step_{channel}"].sum()) for channel in CHANNEL_ORDER},
@@ -648,10 +675,20 @@ def run_single_condition(
 
 def summarize_results(results_df: pd.DataFrame) -> pd.DataFrame:
     agg_spec = {
+        "Rhat_T_mean": ("Rhat_T", "mean"),
+        "Rhat_T_std": ("Rhat_T", "std"),
+        "Rplus_T_mean": ("Rplus_T", "mean"),
+        "Rplus_T_std": ("Rplus_T", "std"),
+        "Rtraj_T_mean": ("Rtraj_T", "mean"),
+        "Rtraj_T_std": ("Rtraj_T", "std"),
         "Delta_rep_T_mean": ("Delta_rep_T", "mean"),
         "Delta_rep_T_std": ("Delta_rep_T", "std"),
+        "Delta_sam_T_mean": ("Delta_sam_T", "mean"),
+        "Delta_sam_T_std": ("Delta_sam_T", "std"),
         "V_T_mean": ("V_T", "mean"),
         "V_T_std": ("V_T", "std"),
+        "Eval_within_step_drift_T_mean": ("Eval_within_step_drift_T", "mean"),
+        "Eval_within_step_drift_T_std": ("Eval_within_step_drift_T", "std"),
     }
     for channel in CHANNEL_ORDER:
         agg_spec[f"A_rate_{channel}_mean"] = (f"A_rate_{channel}", "mean")
@@ -853,33 +890,6 @@ def build_pairwise_excess_tests_table(
     return pd.DataFrame(rows)
 
 
-def compact_pairwise_excess_tests_table(pairwise_df: pd.DataFrame) -> pd.DataFrame:
-    compact = pairwise_df[
-        [
-            "mu",
-            "comparison",
-            "left_label",
-            "right_label",
-            "n_seeds",
-            "mean_diff_right_minus_left",
-            "bootstrap_ci95_low",
-            "bootstrap_ci95_high",
-            "permutation_p_two_sided",
-        ]
-    ].copy()
-    compact = compact.rename(
-        columns={
-            "left_label": "baseline_side",
-            "right_label": "comparison_side",
-            "mean_diff_right_minus_left": "mean_diff_excess_fr",
-            "bootstrap_ci95_low": "bootstrap_ci95_low_excess_fr",
-            "bootstrap_ci95_high": "bootstrap_ci95_high_excess_fr",
-            "permutation_p_two_sided": "permutation_p_value_two_sided",
-        }
-    )
-    return compact
-
-
 def write_channel_definitions() -> None:
     lines = [
         "This real-data experiment is an applied robustness / partial-observability check.",
@@ -1049,15 +1059,11 @@ def main() -> None:
         ],
         contrast_label="task_minus_ablation",
     )
-    primary_pairwise_compact_df = compact_pairwise_excess_tests_table(primary_pairwise_tests_df)
-    ablation_pairwise_compact_df = compact_pairwise_excess_tests_table(ablation_pairwise_tests_df)
     corr_df.to_csv(OUTPUT_DIR / "regional_feedback_correlations.csv", index=False)
     corr_df.to_csv(OUTPUT_DIR / "table_2_correlations.csv", index=False)
     channel_comparison_df.to_csv(OUTPUT_DIR / "table_2_channel_comparison.csv", index=False)
     primary_pairwise_tests_df.to_csv(OUTPUT_DIR / "table_3_pairwise_excess_tests.csv", index=False)
     ablation_pairwise_tests_df.to_csv(OUTPUT_DIR / "table_4_ablation_pairwise_excess_tests.csv", index=False)
-    primary_pairwise_compact_df.to_csv(OUTPUT_DIR / "appendix_pairwise_channel_contrasts.csv", index=False)
-    ablation_pairwise_compact_df.to_csv(OUTPUT_DIR / "appendix_pairwise_ablation_contrasts.csv", index=False)
 
     write_channel_definitions()
     make_plots(results_df, summary_df, round_df)
@@ -1068,9 +1074,9 @@ def main() -> None:
     print("\nChannel comparison:")
     print(channel_comparison_df.to_string(index=False))
     print("\nPairwise excess Fisher tests:")
-    print(primary_pairwise_compact_df.to_string(index=False))
+    print(primary_pairwise_tests_df.to_string(index=False))
     print("\nAblation pairwise excess Fisher tests:")
-    print(ablation_pairwise_compact_df.to_string(index=False))
+    print(ablation_pairwise_tests_df.to_string(index=False))
 
 
 if __name__ == "__main__":
