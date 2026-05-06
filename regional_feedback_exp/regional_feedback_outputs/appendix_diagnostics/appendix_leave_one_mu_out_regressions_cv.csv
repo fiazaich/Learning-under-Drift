@@ -1,77 +1,77 @@
 target,target_role,model_name,predictors,n_folds,mean_heldout_rmse,std_heldout_rmse,mean_heldout_r2,std_heldout_r2
-Delta_rep_T,paper_aligned_prequential_gap,single_channel:blind,A_rate_blind_excess,4,6589.900105191153,3253.6622994102113,-3.846140071706983,4.482376636711687
+Delta_rep_T,paper_aligned_prequential_gap,single_channel:null,A_rate_null_excess,4,6872.061797521113,4083.3182284623394,-3.5248950264360372,2.415203776059449
 Delta_rep_T,paper_aligned_prequential_gap,single_channel:coarse,A_rate_coarse_excess,4,10047.18455011045,5659.324038729734,-19.055826495633518,32.191323028442895
 Delta_rep_T,paper_aligned_prequential_gap,single_channel:task_no_qty,A_rate_task_no_qty_excess,4,9401.273493435863,4930.114175222351,-15.151933750973548,24.816473266529723
 Delta_rep_T,paper_aligned_prequential_gap,single_channel:task_no_cost,A_rate_task_no_cost_excess,4,6424.936668276264,3326.650117785061,-3.28840090383257,3.399025530757268
 Delta_rep_T,paper_aligned_prequential_gap,single_channel:task_no_group,A_rate_task_no_group_excess,4,7152.1838916560855,3355.49841771297,-5.420686667862823,7.1620505549231375
 Delta_rep_T,paper_aligned_prequential_gap,single_channel:task,A_rate_task_excess,4,7385.713834358878,3431.1870963606048,-6.175265196309708,8.47600520362569
-Delta_rep_T,paper_aligned_prequential_gap,mu_controlled:blind,mu + A_rate_blind_excess,4,8719.67086574811,9555.35613411168,-5.412738517300241,7.525912315035648
+Delta_rep_T,paper_aligned_prequential_gap,mu_controlled:null,mu + A_rate_null_excess,4,5672.184052973236,3231.911031423731,-2.0716688020890506,1.960655378218988
 Delta_rep_T,paper_aligned_prequential_gap,mu_controlled:coarse,mu + A_rate_coarse_excess,4,6845.804116111869,3582.8977529806757,-6.301729590683565,10.153252683490209
 Delta_rep_T,paper_aligned_prequential_gap,mu_controlled:task_no_qty,mu + A_rate_task_no_qty_excess,4,5091.030971079081,3585.6736074133855,-1.0844464676299703,0.9826164580575274
 Delta_rep_T,paper_aligned_prequential_gap,mu_controlled:task_no_cost,mu + A_rate_task_no_cost_excess,4,3503.8758716839093,1803.0220039499748,-0.05660678076198336,0.10045166825717168
 Delta_rep_T,paper_aligned_prequential_gap,mu_controlled:task_no_group,mu + A_rate_task_no_group_excess,4,5342.08475442994,4350.341622170344,-1.2364053432819193,1.5554855683617956
 Delta_rep_T,paper_aligned_prequential_gap,mu_controlled:task,mu + A_rate_task_excess,4,5388.226313101919,3574.758542156576,-1.4371726794558777,1.0367869480753613
-Delta_rep_T,paper_aligned_prequential_gap,blind_controlled:coarse,mu + A_rate_coarse_excess + A_rate_blind_excess,4,12732.21847241224,8597.119029547464,-24.904618178045553,36.44362633782554
-Delta_rep_T,paper_aligned_prequential_gap,blind_controlled:task_no_qty,mu + A_rate_task_no_qty_excess + A_rate_blind_excess,4,8931.737378314143,8656.622116319975,-5.386299071482488,6.298548303936307
-Delta_rep_T,paper_aligned_prequential_gap,blind_controlled:task_no_cost,mu + A_rate_task_no_cost_excess + A_rate_blind_excess,4,9402.604397358522,13638.755347396884,-7.058886131614527,14.119117261386384
-Delta_rep_T,paper_aligned_prequential_gap,blind_controlled:task_no_group,mu + A_rate_task_no_group_excess + A_rate_blind_excess,4,9834.117056406074,8121.786432460631,-7.367407854907521,5.695240496419396
-Delta_rep_T,paper_aligned_prequential_gap,blind_controlled:task,mu + A_rate_task_excess + A_rate_blind_excess,4,8741.742014658612,8862.202099158098,-5.129518129912808,6.572796006585605
-Delta_rep_T,paper_aligned_prequential_gap,combined:task_coarse_blind,mu + A_rate_task_excess + A_rate_coarse_excess + A_rate_blind_excess,4,12238.201842499744,8452.619307560912,-21.716432810406012,30.839186345782093
-Delta_rep_T,paper_aligned_prequential_gap,combined:task_ablation_channels,mu + A_rate_task_excess + A_rate_task_no_qty_excess + A_rate_task_no_cost_excess + A_rate_task_no_group_excess + A_rate_blind_excess,4,11873.067143731758,16774.72698817304,-11.686638500072618,21.51579464600012
-V_T,within_step_population_risk_shift,single_channel:blind,A_rate_blind_excess,4,5416.905109034105,2948.668373583021,-2074.0581549117082,1688.4074681893926
+Delta_rep_T,paper_aligned_prequential_gap,null_controlled:coarse,mu + A_rate_coarse_excess + A_rate_null_excess,4,6845.804116111869,3582.8977529806757,-6.301729590683565,10.153252683490209
+Delta_rep_T,paper_aligned_prequential_gap,null_controlled:task_no_qty,mu + A_rate_task_no_qty_excess + A_rate_null_excess,4,5091.030971079081,3585.6736074133855,-1.0844464676299703,0.9826164580575274
+Delta_rep_T,paper_aligned_prequential_gap,null_controlled:task_no_cost,mu + A_rate_task_no_cost_excess + A_rate_null_excess,4,3503.8758716839093,1803.0220039499748,-0.05660678076198336,0.10045166825717168
+Delta_rep_T,paper_aligned_prequential_gap,null_controlled:task_no_group,mu + A_rate_task_no_group_excess + A_rate_null_excess,4,5342.08475442994,4350.341622170344,-1.2364053432819193,1.5554855683617956
+Delta_rep_T,paper_aligned_prequential_gap,null_controlled:task,mu + A_rate_task_excess + A_rate_null_excess,4,5388.226313101919,3574.758542156576,-1.4371726794558777,1.0367869480753613
+Delta_rep_T,paper_aligned_prequential_gap,combined:task_coarse_null,mu + A_rate_task_excess + A_rate_coarse_excess + A_rate_null_excess,4,6764.832882967611,3134.1251941003356,-5.603113118126224,8.215681497418803
+Delta_rep_T,paper_aligned_prequential_gap,combined:task_ablation_channels,mu + A_rate_task_excess + A_rate_task_no_qty_excess + A_rate_task_no_cost_excess + A_rate_task_no_group_excess + A_rate_null_excess,4,7541.852876129184,3123.8184826452843,-5.933607559359804,4.986882925759286
+V_T,within_step_population_risk_shift,single_channel:null,A_rate_null_excess,4,6373.832381341177,4693.101067033085,-3166.2544387358466,3154.384691972018
 V_T,within_step_population_risk_shift,single_channel:coarse,A_rate_coarse_excess,4,9698.966058875087,6359.661488410976,-9013.545536593245,12725.679724487805
 V_T,within_step_population_risk_shift,single_channel:task_no_qty,A_rate_task_no_qty_excess,4,8871.627325232386,5357.876357549409,-7081.89003561014,9250.857747484377
 V_T,within_step_population_risk_shift,single_channel:task_no_cost,A_rate_task_no_cost_excess,4,5081.285950433268,2905.240995595415,-1846.6685520617102,1554.6305566482872
 V_T,within_step_population_risk_shift,single_channel:task_no_group,A_rate_task_no_group_excess,4,6108.681520521781,3167.2711120871663,-2792.5660646061574,2559.0455243643487
 V_T,within_step_population_risk_shift,single_channel:task,A_rate_task_excess,4,6356.903502899931,3293.9237689554966,-3074.9490358928356,2929.690637749666
-V_T,within_step_population_risk_shift,mu_controlled:blind,mu + A_rate_blind_excess,4,2750.4348590768714,2766.914376914736,-669.9934830829479,976.2111304771342
+V_T,within_step_population_risk_shift,mu_controlled:null,mu + A_rate_null_excess,4,3909.853021386528,2593.61142520415,-1118.6444070191696,1081.2707401235361
 V_T,within_step_population_risk_shift,mu_controlled:coarse,mu + A_rate_coarse_excess,4,3677.68776023625,2630.016232735565,-1295.3749324523424,1699.5847820004253
 V_T,within_step_population_risk_shift,mu_controlled:task_no_qty,mu + A_rate_task_no_qty_excess,4,2620.4021341031757,1818.7884349744108,-485.38935026785873,554.352028231598
 V_T,within_step_population_risk_shift,mu_controlled:task_no_cost,mu + A_rate_task_no_cost_excess,4,1894.8526905638796,2116.844316984373,-338.1901047516018,551.3421621204886
 V_T,within_step_population_risk_shift,mu_controlled:task_no_group,mu + A_rate_task_no_group_excess,4,2307.272023638985,1829.5618283037331,-394.74373699174953,518.9518167850417
 V_T,within_step_population_risk_shift,mu_controlled:task,mu + A_rate_task_excess,4,2427.5066052495854,1959.206780572203,-437.18199723981616,588.4525965072405
-V_T,within_step_population_risk_shift,blind_controlled:coarse,mu + A_rate_coarse_excess + A_rate_blind_excess,4,3468.592906012672,2308.9592918393537,-1078.3966525702108,1297.4840902078179
-V_T,within_step_population_risk_shift,blind_controlled:task_no_qty,mu + A_rate_task_no_qty_excess + A_rate_blind_excess,4,2237.002802588154,2168.6272204276725,-410.65668526750005,614.9155722038477
-V_T,within_step_population_risk_shift,blind_controlled:task_no_cost,mu + A_rate_task_no_cost_excess + A_rate_blind_excess,4,1402.0977148876457,1247.139638832113,-160.39923495027983,214.13568819666662
-V_T,within_step_population_risk_shift,blind_controlled:task_no_group,mu + A_rate_task_no_group_excess + A_rate_blind_excess,4,2239.0240878875284,2202.372574176487,-418.3825632463386,631.4980867078363
-V_T,within_step_population_risk_shift,blind_controlled:task,mu + A_rate_task_excess + A_rate_blind_excess,4,2213.1041168906486,2282.6340020090142,-425.6958545409565,639.3682801194855
-V_T,within_step_population_risk_shift,combined:task_coarse_blind,mu + A_rate_task_excess + A_rate_coarse_excess + A_rate_blind_excess,4,3570.073230673129,2371.7667682975125,-1148.1856134436296,1401.422718671999
-V_T,within_step_population_risk_shift,combined:task_ablation_channels,mu + A_rate_task_excess + A_rate_task_no_qty_excess + A_rate_task_no_cost_excess + A_rate_task_no_group_excess + A_rate_blind_excess,4,2564.990129998225,3124.0760331709525,-649.289607646707,1157.6194716998086
-Delta_sam_T,same_time_sampling_gap,single_channel:blind,A_rate_blind_excess,4,2377.703029109616,257.21415140925393,-0.022707369115853387,0.035936610755924865
+V_T,within_step_population_risk_shift,null_controlled:coarse,mu + A_rate_coarse_excess + A_rate_null_excess,4,3677.68776023625,2630.016232735565,-1295.3749324523424,1699.5847820004253
+V_T,within_step_population_risk_shift,null_controlled:task_no_qty,mu + A_rate_task_no_qty_excess + A_rate_null_excess,4,2620.4021341031757,1818.7884349744108,-485.38935026785873,554.352028231598
+V_T,within_step_population_risk_shift,null_controlled:task_no_cost,mu + A_rate_task_no_cost_excess + A_rate_null_excess,4,1894.8526905638796,2116.844316984373,-338.1901047516018,551.3421621204886
+V_T,within_step_population_risk_shift,null_controlled:task_no_group,mu + A_rate_task_no_group_excess + A_rate_null_excess,4,2307.272023638985,1829.5618283037331,-394.74373699174953,518.9518167850417
+V_T,within_step_population_risk_shift,null_controlled:task,mu + A_rate_task_excess + A_rate_null_excess,4,2427.5066052495854,1959.206780572203,-437.18199723981616,588.4525965072405
+V_T,within_step_population_risk_shift,combined:task_coarse_null,mu + A_rate_task_excess + A_rate_coarse_excess + A_rate_null_excess,4,3710.5118449115776,2668.3677595027543,-1327.0411562910392,1756.6768108818774
+V_T,within_step_population_risk_shift,combined:task_ablation_channels,mu + A_rate_task_excess + A_rate_task_no_qty_excess + A_rate_task_no_cost_excess + A_rate_task_no_group_excess + A_rate_null_excess,4,2082.4942374249586,2636.041357990567,-444.3759265668504,799.1383345311301
+Delta_sam_T,same_time_sampling_gap,single_channel:null,A_rate_null_excess,4,2539.9748657299297,362.74250584291553,-0.1698958878220831,0.17267801455869614
 Delta_sam_T,same_time_sampling_gap,single_channel:coarse,A_rate_coarse_excess,4,2543.004598469515,213.9898194540755,-0.18755703392571393,0.21948815687116266
 Delta_sam_T,same_time_sampling_gap,single_channel:task_no_qty,A_rate_task_no_qty_excess,4,2523.9915601638477,213.37674555398766,-0.16671978594330272,0.18901500266987892
 Delta_sam_T,same_time_sampling_gap,single_channel:task_no_cost,A_rate_task_no_cost_excess,4,2381.6920519276364,292.2553825107803,-0.02310180553880542,0.020561483830351574
 Delta_sam_T,same_time_sampling_gap,single_channel:task_no_group,A_rate_task_no_group_excess,4,2404.10906532443,261.2781834290582,-0.045628122285977735,0.04040647601755664
 Delta_sam_T,same_time_sampling_gap,single_channel:task,A_rate_task_excess,4,2413.2330044957084,285.02047431506884,-0.05164863980391604,0.03222690236353797
-Delta_sam_T,same_time_sampling_gap,mu_controlled:blind,mu + A_rate_blind_excess,4,3207.8503339911103,1591.3024520853944,-0.9694987984004393,1.6159894376814143
+Delta_sam_T,same_time_sampling_gap,mu_controlled:null,mu + A_rate_null_excess,4,2357.2951127325205,273.3827980885742,-0.0032437420293663366,0.0035664025194888384
 Delta_sam_T,same_time_sampling_gap,mu_controlled:coarse,mu + A_rate_coarse_excess,4,3088.529851150126,1231.6278687775907,-1.255682855090697,2.496831384769806
 Delta_sam_T,same_time_sampling_gap,mu_controlled:task_no_qty,mu + A_rate_task_no_qty_excess,4,2488.2583863653163,176.17763364377538,-0.14141320728859869,0.2346901029925349
 Delta_sam_T,same_time_sampling_gap,mu_controlled:task_no_cost,mu + A_rate_task_no_cost_excess,4,6085.2186946028105,7509.003252621093,-10.396019773454022,20.626017275284863
 Delta_sam_T,same_time_sampling_gap,mu_controlled:task_no_group,mu + A_rate_task_no_group_excess,4,2457.9884381187176,160.71121326306675,-0.11071336404525434,0.19910026845728787
 Delta_sam_T,same_time_sampling_gap,mu_controlled:task,mu + A_rate_task_excess,4,2994.3251565456667,871.5812663247282,-0.9212668965657222,1.6555603136457278
-Delta_sam_T,same_time_sampling_gap,blind_controlled:coarse,mu + A_rate_coarse_excess + A_rate_blind_excess,4,5530.233662661802,4382.567116191714,-9.281057955155585,16.709201549344137
-Delta_sam_T,same_time_sampling_gap,blind_controlled:task_no_qty,mu + A_rate_task_no_qty_excess + A_rate_blind_excess,4,3576.4895878374946,1021.4358894572898,-1.5089998400069522,1.448241721753366
-Delta_sam_T,same_time_sampling_gap,blind_controlled:task_no_cost,mu + A_rate_task_no_cost_excess + A_rate_blind_excess,4,4779.535724823307,5064.076505619767,-5.134588951112422,10.255277293251519
-Delta_sam_T,same_time_sampling_gap,blind_controlled:task_no_group,mu + A_rate_task_no_group_excess + A_rate_blind_excess,4,3045.362768136676,1144.8457749598228,-0.7078539354714839,0.9612254007360255
-Delta_sam_T,same_time_sampling_gap,blind_controlled:task,mu + A_rate_task_excess + A_rate_blind_excess,4,4163.236933585572,1921.5673224460688,-3.2290539669645253,4.961544047075234
-Delta_sam_T,same_time_sampling_gap,combined:task_coarse_blind,mu + A_rate_task_excess + A_rate_coarse_excess + A_rate_blind_excess,4,6460.789734576321,5415.899134053303,-13.551628099731056,23.926659980306564
-Delta_sam_T,same_time_sampling_gap,combined:task_ablation_channels,mu + A_rate_task_excess + A_rate_task_no_qty_excess + A_rate_task_no_cost_excess + A_rate_task_no_group_excess + A_rate_blind_excess,4,7257.816689827277,8400.310408283165,-14.216405701895047,26.443600334553505
-Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,single_channel:blind,A_rate_blind_excess,4,5341.016580129552,3013.0808856223,-200.90260956886445,252.84879706010895
+Delta_sam_T,same_time_sampling_gap,null_controlled:coarse,mu + A_rate_coarse_excess + A_rate_null_excess,4,3088.529851150126,1231.6278687775907,-1.255682855090697,2.496831384769806
+Delta_sam_T,same_time_sampling_gap,null_controlled:task_no_qty,mu + A_rate_task_no_qty_excess + A_rate_null_excess,4,2488.2583863653163,176.17763364377538,-0.14141320728859869,0.2346901029925349
+Delta_sam_T,same_time_sampling_gap,null_controlled:task_no_cost,mu + A_rate_task_no_cost_excess + A_rate_null_excess,4,6085.2186946028105,7509.003252621093,-10.396019773454022,20.626017275284863
+Delta_sam_T,same_time_sampling_gap,null_controlled:task_no_group,mu + A_rate_task_no_group_excess + A_rate_null_excess,4,2457.9884381187176,160.71121326306675,-0.11071336404525434,0.19910026845728787
+Delta_sam_T,same_time_sampling_gap,null_controlled:task,mu + A_rate_task_excess + A_rate_null_excess,4,2994.3251565456667,871.5812663247282,-0.9212668965657222,1.6555603136457278
+Delta_sam_T,same_time_sampling_gap,combined:task_coarse_null,mu + A_rate_task_excess + A_rate_coarse_excess + A_rate_null_excess,4,3184.0407988603365,1372.4072852816707,-1.4589781268554551,2.8615417204954627
+Delta_sam_T,same_time_sampling_gap,combined:task_ablation_channels,mu + A_rate_task_excess + A_rate_task_no_qty_excess + A_rate_task_no_cost_excess + A_rate_task_no_group_excess + A_rate_null_excess,4,6861.999690982534,7035.38350329922,-11.312776234328451,19.72620697231931
+Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,single_channel:null,A_rate_null_excess,4,6353.756213497676,4614.0626337004605,-282.23909932877956,263.8139056656379
 Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,single_channel:coarse,A_rate_coarse_excess,4,9503.263153264665,6109.818720296318,-1355.9835839585812,2393.4450888422666
 Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,single_channel:task_no_qty,A_rate_task_no_qty_excess,4,8669.77332975855,5105.666937444704,-1012.4111581644287,1731.8578325149683
 Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,single_channel:task_no_cost,A_rate_task_no_cost_excess,4,5001.199732197652,2980.190895982424,-176.18348994626993,223.89518332042647
 Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,single_channel:task_no_group,A_rate_task_no_group_excess,4,6000.872813728759,3144.183424579391,-322.17693447622963,473.43207765023107
 Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,single_channel:task,A_rate_task_excess,4,6239.020531110924,3249.856329803505,-367.59492399776065,553.5515451893381
-Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,mu_controlled:blind,mu + A_rate_blind_excess,4,2420.393892677108,2456.672431636237,-28.076302359828503,28.298727172366803
+Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,mu_controlled:null,mu + A_rate_null_excess,4,3865.323109925199,2688.7361742076964,-94.01195825563866,109.20046916649622
 Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,mu_controlled:coarse,mu + A_rate_coarse_excess,4,4603.260698275875,3337.750825218423,-316.99870113850244,563.2292968650444
 Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,mu_controlled:task_no_qty,mu + A_rate_task_no_qty_excess,4,3709.532321393117,2105.6979341821707,-115.20623240108456,153.99029291793175
 Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,mu_controlled:task_no_cost,mu + A_rate_task_no_cost_excess,4,2154.8172975992106,3076.251669411572,-19.81395220402818,33.71926733810892
 Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,mu_controlled:task_no_group,mu + A_rate_task_no_group_excess,4,3159.5556795812495,2037.2401760410353,-64.97449312962966,69.53133083811689
 Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,mu_controlled:task,mu + A_rate_task_excess,4,3272.2711864505636,2119.862177567739,-61.098008042977625,49.65675467965499
-Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,blind_controlled:coarse,mu + A_rate_coarse_excess + A_rate_blind_excess,4,3931.8046116697333,2656.6660137763447,-220.4461330488443,385.2298943179776
-Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,blind_controlled:task_no_qty,mu + A_rate_task_no_qty_excess + A_rate_blind_excess,4,3097.635854221715,1550.567606036616,-62.36838253973471,61.175156988717106
-Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,blind_controlled:task_no_cost,mu + A_rate_task_no_cost_excess + A_rate_blind_excess,4,1318.193750560318,1592.56232976568,-6.429392945512442,9.478866721840154
-Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,blind_controlled:task_no_group,mu + A_rate_task_no_group_excess + A_rate_blind_excess,4,2822.1410134436223,1703.3646714865567,-41.47985204503416,24.018377263132788
-Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,blind_controlled:task,mu + A_rate_task_excess + A_rate_blind_excess,4,2677.038858607877,1881.7264554385858,-32.02344295359949,16.595203754222844
-Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,combined:task_coarse_blind,mu + A_rate_task_excess + A_rate_coarse_excess + A_rate_blind_excess,4,4143.193770469852,2757.730709525849,-254.1590555690191,446.338956838922
-Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,combined:task_ablation_channels,mu + A_rate_task_excess + A_rate_task_no_qty_excess + A_rate_task_no_cost_excess + A_rate_task_no_group_excess + A_rate_blind_excess,4,3319.828076101193,2118.228624250238,-59.552972594522146,44.70893520359588
+Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,null_controlled:coarse,mu + A_rate_coarse_excess + A_rate_null_excess,4,4603.260698275875,3337.750825218423,-316.99870113850244,563.2292968650444
+Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,null_controlled:task_no_qty,mu + A_rate_task_no_qty_excess + A_rate_null_excess,4,3709.532321393117,2105.6979341821707,-115.20623240108456,153.99029291793175
+Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,null_controlled:task_no_cost,mu + A_rate_task_no_cost_excess + A_rate_null_excess,4,2154.8172975992106,3076.251669411572,-19.81395220402818,33.71926733810892
+Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,null_controlled:task_no_group,mu + A_rate_task_no_group_excess + A_rate_null_excess,4,3159.5556795812495,2037.2401760410353,-64.97449312962966,69.53133083811689
+Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,null_controlled:task,mu + A_rate_task_excess + A_rate_null_excess,4,3272.2711864505636,2119.862177567739,-61.098008042977625,49.65675467965499
+Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,combined:task_coarse_null,mu + A_rate_task_excess + A_rate_coarse_excess + A_rate_null_excess,4,4682.715872085856,3403.812318237287,-333.29017338299474,594.2175536398198
+Eval_within_step_drift_T,diagnostic_only_heldout_step_shift,combined:task_ablation_channels,mu + A_rate_task_excess + A_rate_task_no_qty_excess + A_rate_task_no_cost_excess + A_rate_task_no_group_excess + A_rate_null_excess,4,3391.633591024397,2472.2601152540515,-62.81028131022045,53.402557589594686

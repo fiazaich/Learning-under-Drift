@@ -1,0 +1,37 @@
+scale,channel,channel_label,target,target_label,metric,value
+run_level,null,Null blind,Mean_abs_delta_loss_T,pointwise loss motion,raw_rate_r2,0.0
+run_level,null,Null blind,Mean_abs_delta_error_T,pointwise error motion,raw_rate_r2,0.0
+run_level,null,Null blind,Eval_within_step_drift_T,held-out step shift,raw_rate_r2,0.0
+transition_level,null,Null blind,mean_abs_delta_loss,pointwise loss motion,spearman_rho,0.0
+transition_level,null,Null blind,mean_abs_delta_error,pointwise error motion,spearman_rho,0.0
+transition_level,null,Null blind,eval_within_step_drift,held-out step shift,spearman_rho,0.0
+run_level,coarse,Coarse score,Mean_abs_delta_loss_T,pointwise loss motion,raw_rate_r2,0.707586143424267
+run_level,coarse,Coarse score,Mean_abs_delta_error_T,pointwise error motion,raw_rate_r2,0.6747858790124326
+run_level,coarse,Coarse score,Eval_within_step_drift_T,held-out step shift,raw_rate_r2,0.5898421491173784
+transition_level,coarse,Coarse score,mean_abs_delta_loss,pointwise loss motion,spearman_rho,0.3891425043669441
+transition_level,coarse,Coarse score,mean_abs_delta_error,pointwise error motion,spearman_rho,0.7393361920894932
+transition_level,coarse,Coarse score,eval_within_step_drift,held-out step shift,spearman_rho,0.1291337988275222
+run_level,task_no_qty,Task minus quantity,Mean_abs_delta_loss_T,pointwise loss motion,raw_rate_r2,0.7463935961510243
+run_level,task_no_qty,Task minus quantity,Mean_abs_delta_error_T,pointwise error motion,raw_rate_r2,0.7146306412808845
+run_level,task_no_qty,Task minus quantity,Eval_within_step_drift_T,held-out step shift,raw_rate_r2,0.6298242766242808
+transition_level,task_no_qty,Task minus quantity,mean_abs_delta_loss,pointwise loss motion,spearman_rho,0.4911796556695109
+transition_level,task_no_qty,Task minus quantity,mean_abs_delta_error,pointwise error motion,spearman_rho,0.7487242432101573
+transition_level,task_no_qty,Task minus quantity,eval_within_step_drift,held-out step shift,spearman_rho,0.2608707386149639
+run_level,task_no_cost,Task minus cost,Mean_abs_delta_loss_T,pointwise loss motion,raw_rate_r2,0.9355699552040796
+run_level,task_no_cost,Task minus cost,Mean_abs_delta_error_T,pointwise error motion,raw_rate_r2,0.9194835242239124
+run_level,task_no_cost,Task minus cost,Eval_within_step_drift_T,held-out step shift,raw_rate_r2,0.8474571383602352
+transition_level,task_no_cost,Task minus cost,mean_abs_delta_loss,pointwise loss motion,spearman_rho,0.8081426114447552
+transition_level,task_no_cost,Task minus cost,mean_abs_delta_error,pointwise error motion,spearman_rho,0.8364989540879184
+transition_level,task_no_cost,Task minus cost,eval_within_step_drift,held-out step shift,spearman_rho,0.5213356831054056
+run_level,task_no_group,Task minus subgroup,Mean_abs_delta_loss_T,pointwise loss motion,raw_rate_r2,0.8965102437258059
+run_level,task_no_group,Task minus subgroup,Mean_abs_delta_error_T,pointwise error motion,raw_rate_r2,0.8742667592569096
+run_level,task_no_group,Task minus subgroup,Eval_within_step_drift_T,held-out step shift,raw_rate_r2,0.8003789990459893
+transition_level,task_no_group,Task minus subgroup,mean_abs_delta_loss,pointwise loss motion,spearman_rho,0.8109020114915066
+transition_level,task_no_group,Task minus subgroup,mean_abs_delta_error,pointwise error motion,spearman_rho,0.8268208695139428
+transition_level,task_no_group,Task minus subgroup,eval_within_step_drift,held-out step shift,spearman_rho,0.533685691148391
+run_level,task,Task-aligned,Mean_abs_delta_loss_T,pointwise loss motion,raw_rate_r2,0.8852120134670179
+run_level,task,Task-aligned,Mean_abs_delta_error_T,pointwise error motion,raw_rate_r2,0.861712110911461
+run_level,task,Task-aligned,Eval_within_step_drift_T,held-out step shift,raw_rate_r2,0.7876462099319917
+transition_level,task,Task-aligned,mean_abs_delta_loss,pointwise loss motion,spearman_rho,0.8071519230024683
+transition_level,task,Task-aligned,mean_abs_delta_error,pointwise error motion,spearman_rho,0.8330403893938862
+transition_level,task,Task-aligned,eval_within_step_drift,held-out step shift,spearman_rho,0.5301088710807457

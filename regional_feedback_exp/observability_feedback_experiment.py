@@ -107,10 +107,10 @@ TARGET_LABELS = {
     "v_t": r"$v_t$",
     "Eval_within_step_drift_T": "held-out step shift",
     "eval_within_step_drift": "held-out step shift",
-    "Mean_abs_delta_loss_T": "loss motion",
-    "mean_abs_delta_loss": "loss motion",
-    "Mean_abs_delta_error_T": "error motion",
-    "mean_abs_delta_error": "error motion",
+    "Mean_abs_delta_loss_T": "pointwise loss motion",
+    "mean_abs_delta_loss": "pointwise loss motion",
+    "Mean_abs_delta_error_T": "pointwise error motion",
+    "mean_abs_delta_error": "pointwise error motion",
     "Mean_abs_delta_y_T": "target motion",
     "mean_abs_delta_y": "target motion",
     "Mean_abs_delta_pred_T": "prediction motion",
@@ -891,8 +891,8 @@ def build_step_diagnostics_table(round_df: pd.DataFrame) -> pd.DataFrame:
         ("eval_within_step_drift", "diagnostic_heldout_step_shift"),
         ("mean_abs_delta_y", "target_motion"),
         ("mean_abs_delta_pred", "prediction_motion"),
-        ("mean_abs_delta_error", "error_motion"),
-        ("mean_abs_delta_loss", "loss_motion"),
+        ("mean_abs_delta_error", "unsigned_pointwise_error_motion"),
+        ("mean_abs_delta_loss", "unsigned_pointwise_loss_motion"),
     ]
     channels = sorted(
         col[len("fr_step_") :]
@@ -1067,8 +1067,8 @@ def operational_raw_rate_targets(results_df: pd.DataFrame) -> list[tuple[str, st
         ("Delta_rep_T", "secondary_prequential_gap_cancellation_sensitive"),
         ("Delta_sam_T", "same_time_sampling_gap"),
         ("Eval_within_step_drift_T", "diagnostic_only_heldout_step_shift"),
-        ("Mean_abs_delta_loss_T", "direct_loss_motion"),
-        ("Mean_abs_delta_error_T", "direct_error_motion"),
+        ("Mean_abs_delta_loss_T", "unsigned_pointwise_loss_motion"),
+        ("Mean_abs_delta_error_T", "unsigned_pointwise_error_motion"),
     ]
     return [(target, role) for target, role in candidates if target in results_df.columns]
 
@@ -1452,7 +1452,8 @@ def build_operational_raw_rate_diagnostics(
     raw_rate_trend_df: pd.DataFrame,
     step_diagnostics_df: pd.DataFrame,
 ) -> pd.DataFrame:
-    channels = sorted(set(raw_rate_trend_df["channel"]).union(set(step_diagnostics_df["channel"])))
+    observed_channels = set(raw_rate_trend_df["channel"]).union(set(step_diagnostics_df["channel"]))
+    channels = [channel for channel in CHANNEL_ORDER if channel in observed_channels]
     rows = []
     for channel in channels:
         channel_trends = raw_rate_trend_df[raw_rate_trend_df["channel"] == channel]
@@ -1478,21 +1479,11 @@ def build_operational_raw_rate_diagnostics(
                 "channel": channel,
                 "condition_mean_spearman_V_T": trend_value("V_T", "spearman_target_mean_with_predictor_mean"),
                 "condition_mean_spearman_Delta_rep_T": trend_value("Delta_rep_T", "spearman_target_mean_with_predictor_mean"),
-                "condition_mean_spearman_Mean_abs_delta_loss_T": trend_value(
-                    "Mean_abs_delta_loss_T",
-                    "spearman_target_mean_with_predictor_mean",
-                ),
                 "condition_mean_pearson_V_T": trend_value("V_T", "pearson_target_mean_with_predictor_mean"),
-                "condition_mean_pearson_Mean_abs_delta_loss_T": trend_value(
-                    "Mean_abs_delta_loss_T",
-                    "pearson_target_mean_with_predictor_mean",
-                ),
+                "condition_mean_pearson_Delta_rep_T": trend_value("Delta_rep_T", "pearson_target_mean_with_predictor_mean"),
                 "step_spearman_v_t": step_value("v_t", "spearman"),
                 "step_pearson_v_t": step_value("v_t", "pearson"),
                 "step_slope_v_t": step_value("v_t", "slope"),
-                "step_spearman_mean_abs_delta_loss": step_value("mean_abs_delta_loss", "spearman"),
-                "step_pearson_mean_abs_delta_loss": step_value("mean_abs_delta_loss", "pearson"),
-                "step_slope_mean_abs_delta_loss": step_value("mean_abs_delta_loss", "slope"),
             }
         )
 
@@ -1502,9 +1493,8 @@ def build_operational_raw_rate_diagnostics(
 
     rank_cols = [
         "condition_mean_spearman_V_T",
-        "condition_mean_spearman_Mean_abs_delta_loss_T",
+        "condition_mean_spearman_Delta_rep_T",
         "step_spearman_v_t",
-        "step_spearman_mean_abs_delta_loss",
     ]
     for col in rank_cols:
         diagnostics[f"rank_{col}"] = diagnostics[col].rank(method="average", ascending=False)
@@ -1582,14 +1572,14 @@ def write_results_dashboard(
     else:
         step_vt_display = pd.DataFrame()
 
-    lift_df = build_channel_lift_table(raw_rate_regression_df, step_diagnostics_df)
-    if not lift_df.empty:
-        lift_display = lift_df.copy()
-        lift_display["channel_label"] = lift_display["channel"].map(channel_label)
-        lift_display["target_label"] = lift_display["target"].map(target_label)
-        lift_display = lift_display.sort_values(["scale", "target", "lift"], ascending=[True, True, False])
+    association_df = build_channel_association_summary_table(raw_rate_regression_df, step_diagnostics_df)
+    if not association_df.empty:
+        association_display = association_df.copy()
+        association_display["channel_label"] = association_display["channel"].map(channel_label)
+        association_display["target_label"] = association_display["target"].map(target_label)
+        association_display = association_display.sort_values(["scale", "target", "value"], ascending=[True, True, False])
     else:
-        lift_display = pd.DataFrame()
+        association_display = pd.DataFrame()
 
     lines = [
         "# Regional Feedback Results Dashboard",
@@ -1605,18 +1595,23 @@ def write_results_dashboard(
     ]
 
     lines.extend(["## Primary Evidence", ""])
-    lines.append("1. `figure_main_channel_lift.*`: lift over the true null blind channel for run-level drift/risk quantities and transition-level risk shifts.")
-    lines.append("   This asks whether a monitoring channel preserves risk-relevant motion beyond a fixed row-bucket negative control.")
+    lines.append("1. `figure_main_channel_association_summary.*`: run-level raw-rate $R^2$ and transition-level Spearman $\\rho$ by channel.")
+    lines.append("   Channels are compared on their association with the paper-aligned drift quantities: $V_T$, $\\Delta_T^{\\mathrm{rep}}$, and $v_t$.")
     lines.append("2. `figure_main_step_fr_association.*`: per-transition Spearman association between per-step observed FR and $v_t$, including the null blind channel.")
     lines.append("   This shows transition-level observability and channel dependence without using individual-run scatter plots.")
     lines.append("3. `figure_main_feedback_manipulation_check.*`: a secondary manipulation check that feedback strength moves risk quantities and raw observed FR rates.")
     lines.append("")
 
-    if not lift_display.empty:
-        lines.extend(["## Channel Lift Highlights", ""])
-        lines.append("Lift is measured relative to the true null blind channel, a fixed row/hash partition independent of predictions and task variables.")
+    lines.extend(["## Main Figure Caption", ""])
+    lines.append("Channels are compared on their association with the paper-aligned drift quantities. Panel (a) reports run-level raw-rate $R^2$ for $V_T$ and $\\Delta_T^{\\mathrm{rep}}$. Panel (b) reports transition-level Spearman association with $v_t$. The null blind channel is a fixed row-bucket negative control. Pointwise loss-motion diagnostics are reported separately in the appendix because they are unsigned cancellation-free quantities.")
+    lines.append("")
+
+    if not association_display.empty:
+        lines.extend(["## Channel Association Highlights", ""])
+        lines.append("The null blind channel is a fixed row/hash partition and has no observed Fisher motion. Coarse score is the prediction-score baseline.")
+        lines.append("Primary drift quantities are $V_T$ and $v_t$; $\\Delta_T^{\\mathrm{rep}}$ is reported as the paper-aligned prequential gap and is expected to be noisier because it includes sampling deviation and possible cancellation.")
         lines.append("")
-        lines.extend(markdown_table(lift_display, ["scale", "target_label", "channel_label", "lift"]))
+        lines.extend(markdown_table(association_display, ["scale", "target_label", "channel_label", "value"]))
         lines.append("")
 
     if not step_vt_display.empty:
@@ -1654,7 +1649,8 @@ def write_results_dashboard(
     lines.append("The null blind channel is a fixed row-bucket partition and is independent of the feedback-targeted variables. It is a negative control for categorical Fisher motion induced by finite-sample/binning artifacts.")
     lines.append("The coarse score channel is a prediction-score baseline, not a null channel. Task channels add task structure beyond the score baseline.")
     lines.append("Observable FR is a contracted footprint, not an estimate of the full intrinsic $C_T/T$ budget.")
-    lines.append("The footprint is channel-dependent and target-dependent; the useful question is lift over null, not raw pooled regression performance alone.")
+    lines.append("The footprint is channel-dependent and target-dependent; the useful comparison is between the coarse score baseline and task-relevant channels, with Null blind as a negative control.")
+    lines.append("Unsigned pointwise loss motion is supporting evidence only and is reported in the appendix because it removes cancellation before averaging.")
     lines.append("The strongest task channel may be an ablation such as Task minus cost or Task minus subgroup. This is not a failure; adding coordinates can introduce sparsity, nuisance variation, or cancellation.")
     lines.append("")
 
@@ -1678,15 +1674,17 @@ def write_results_dashboard(
             "| `RESULTS_DASHBOARD.md` | Start here. Human-readable summary. |",
             "| `README.md` | Main vs appendix output map. |",
             "| `main_figure_values_summary.txt` | Exact values used in the main figures. |",
-            "| `figure_main_channel_lift.*` | Primary lift over null blind diagnostic. |",
+            "| `figure_main_channel_association_summary.*` | Primary channel association summary for $V_T$, $\\Delta_T^{\\mathrm{rep}}$, and $v_t$. |",
             "| `figure_main_step_fr_association.*` | Primary transition-level channel association figure. |",
             "| `figure_main_feedback_manipulation_check.*` | Secondary manipulation check. |",
+            "| `table_channel_association_summary.csv` | Values shown in `figure_main_channel_association_summary.*`. |",
             "| `table_operational_raw_rate_diagnostics.csv` | Main deployable raw-rate and per-step diagnostic table. |",
             "| `regional_feedback_step_diagnostics.csv` | Per-transition FR vs risk/motion diagnostics. |",
             "| `regional_feedback_summary.csv` | Main metrics by mu. |",
             "| `regional_feedback_rounds.csv` | Round-level raw data. Large/detail file. |",
             "| `regional_feedback_results_by_seed.csv` | Condition/seed-level raw data. |",
-            "| `appendix_diagnostics/` | Excess-rate, leave-one-$\\mu$-out, within-$\\mu$, pooled R2 heatmap, individual-run scatter, and condition-mean descriptive diagnostics. |",
+            "| `appendix_diagnostics/appendix_table_motion_diagnostics.csv` | Unsigned pointwise loss/error motion and held-out step-shift support diagnostics. |",
+            "| `appendix_diagnostics/` | Excess-rate, leave-one-$\\mu$-out, within-$\\mu$, pooled R2 heatmap, individual-run scatter, motion diagnostics, and condition-mean descriptive diagnostics. |",
             "",
         ]
     )
@@ -1879,106 +1877,6 @@ def plot_metric_heatmap(
     save_figure_all_formats(fig, outpath)
 
 
-def plot_raw_rate_regression_r2(raw_rate_regression_df: pd.DataFrame) -> None:
-    if raw_rate_regression_df.empty:
-        return
-    targets = [
-        ("V_T", r"$V_T$"),
-        ("Delta_rep_T", r"$\Delta_T^{\mathrm{rep}}$"),
-        ("Mean_abs_delta_loss_T", "Mean |delta loss|"),
-        ("Mean_abs_delta_error_T", "Mean |delta error|"),
-    ]
-    focus = raw_rate_regression_df[
-        raw_rate_regression_df["target"].isin([target for target, _ in targets])
-    ].copy()
-    if focus.empty:
-        return
-    matrix = (
-        focus.pivot_table(index="channel", columns="target", values="r2_in_sample", aggfunc="mean")
-        .reindex(CHANNEL_ORDER)
-        .reset_index()
-    )
-    value_cols = [target for target, _ in targets if target in matrix.columns]
-    value_labels = [label for target, label in targets if target in matrix.columns]
-    plot_metric_heatmap(
-        matrix,
-        row_col="channel",
-        value_cols=value_cols,
-        value_labels=value_labels,
-        outpath=OUTPUT_DIR / "figure_5_raw_rate_regression_r2.png",
-        cbar_label=r"In-sample $R^2$",
-        vmin=0.0,
-        vmax=1.0,
-    )
-
-
-def plot_operational_association_heatmap(operational_df: pd.DataFrame) -> None:
-    if operational_df.empty:
-        return
-    plot_df = operational_df.sort_values(["operational_rank", "channel"]).copy()
-    value_cols = [
-        "condition_mean_spearman_V_T",
-        "condition_mean_spearman_Mean_abs_delta_loss_T",
-        "step_spearman_v_t",
-        "step_spearman_mean_abs_delta_loss",
-    ]
-    value_labels = [
-        "Condition mean\nraw rate vs V_T",
-        "Condition mean\nraw rate vs loss",
-        "Per-step FR\nvs v_t",
-        "Per-step FR\nvs loss",
-    ]
-    available_cols = [col for col in value_cols if col in plot_df]
-    available_labels = [label for col, label in zip(value_cols, value_labels) if col in plot_df]
-    plot_metric_heatmap(
-        plot_df,
-        row_col="channel",
-        value_cols=available_cols,
-        value_labels=available_labels,
-        outpath=OUTPUT_DIR / "figure_6_operational_association_heatmap.png",
-        cbar_label="Spearman rho",
-        vmin=0.0,
-        vmax=1.0,
-    )
-
-
-def plot_best_raw_rate_regression_fits(results_df: pd.DataFrame, raw_rate_regression_df: pd.DataFrame) -> None:
-    if raw_rate_regression_df.empty:
-        return
-    targets = [("V_T", r"$V_T$"), ("Delta_rep_T", r"$\Delta_T^{\mathrm{rep}}$")]
-    fig, axes = plt.subplots(1, len(targets), figsize=(FIGSIZE[0] * 1.35, FIGSIZE[1]), layout="constrained")
-    axes = np.atleast_1d(axes)
-    plotted = False
-    for ax, (target, target_label) in zip(axes, targets):
-        target_regs = raw_rate_regression_df[raw_rate_regression_df["target"] == target].copy()
-        target_regs = target_regs[np.isfinite(target_regs["r2_in_sample"])]
-        if target_regs.empty or target not in results_df:
-            ax.set_visible(False)
-            continue
-        best = target_regs.sort_values("r2_in_sample", ascending=False).iloc[0]
-        channel = str(best["channel"])
-        predictor = f"A_rate_{channel}"
-        model_df = results_df[[predictor, target, "mu"]].dropna()
-        if model_df.empty:
-            ax.set_visible(False)
-            continue
-        x = model_df[predictor].to_numpy(dtype=float)
-        y = model_df[target].to_numpy(dtype=float)
-        ax.scatter(x, y, c=model_df["mu"].to_numpy(dtype=float), cmap="viridis", s=12, alpha=0.8, linewidths=0)
-        x_line = np.linspace(float(np.min(x)), float(np.max(x)), 100)
-        y_line = float(best["intercept"]) + float(best["slope"]) * x_line
-        ax.plot(x_line, y_line, color="black", lw=0.9)
-        ax.set_xlabel(f"Raw {predictor}")
-        ax.set_ylabel(target_label)
-        ax.set_title(f"{CHANNEL_LABELS.get(channel, channel)}; R2={float(best['r2_in_sample']):.2f}")
-        style_axis(ax)
-        plotted = True
-    if plotted:
-        save_figure_all_formats(fig, OUTPUT_DIR / "figure_7_best_raw_rate_regression_fits.png")
-    else:
-        plt.close(fig)
-
-
 def plot_condition_mean_raw_fr_vs_risk(
     summary_df: pd.DataFrame,
     n_seeds: int,
@@ -2130,20 +2028,19 @@ def plot_appendix_run_level_raw_rate_r2_heatmap(raw_rate_regression_df: pd.DataF
     save_figure_all_formats(fig, APPENDIX_OUTPUT_DIR / "appendix_figure_run_level_raw_rate_r2_heatmap.png")
 
 
-def build_channel_lift_table(raw_rate_regression_df: pd.DataFrame, step_diagnostics_df: pd.DataFrame) -> pd.DataFrame:
-    channels = [channel for channel in CHANNEL_ORDER if channel != "null"]
+def build_channel_association_summary_table(
+    raw_rate_regression_df: pd.DataFrame,
+    step_diagnostics_df: pd.DataFrame,
+) -> pd.DataFrame:
+    channels = CHANNEL_ORDER
     run_targets = [
         ("V_T", r"$V_T$"),
-        ("Mean_abs_delta_loss_T", "loss motion"),
+        ("Delta_rep_T", r"$\Delta_T^{\mathrm{rep}}$"),
     ]
     step_targets = [
         ("v_t", r"$v_t$"),
-        ("mean_abs_delta_loss", "loss motion"),
     ]
-
-    null_run = raw_rate_regression_df[raw_rate_regression_df["channel"] == "null"].set_index("target")
     positive_step = step_diagnostics_df[step_diagnostics_df["mu"].astype(str) == "all_positive"].copy()
-    null_step = positive_step[positive_step["channel"] == "null"].set_index("target")
 
     run_rows = []
     for channel in channels:
@@ -2151,19 +2048,17 @@ def build_channel_lift_table(raw_rate_regression_df: pd.DataFrame, step_diagnost
             channel_row = raw_rate_regression_df[
                 (raw_rate_regression_df["channel"] == channel) & (raw_rate_regression_df["target"] == target)
             ]
-            if channel_row.empty or target not in null_run.index:
+            if channel_row.empty:
                 continue
             channel_r2 = float(channel_row.iloc[0]["r2_in_sample"])
-            null_r2 = float(null_run.loc[target]["r2_in_sample"])
             run_rows.append(
                 {
                     "scale": "run_level",
                     "channel": channel,
                     "target": target,
                     "target_label": label,
-                    "channel_value": channel_r2,
-                    "null_value": null_r2,
-                    "lift": channel_r2 - null_r2,
+                    "metric": "raw_rate_r2",
+                    "value": channel_r2,
                 }
             )
 
@@ -2171,38 +2066,117 @@ def build_channel_lift_table(raw_rate_regression_df: pd.DataFrame, step_diagnost
     for channel in channels:
         for target, label in step_targets:
             channel_row = positive_step[(positive_step["channel"] == channel) & (positive_step["target"] == target)]
-            if channel_row.empty or target not in null_step.index:
+            if channel_row.empty:
                 continue
             channel_rho = float(channel_row.iloc[0]["spearman"])
-            null_rho = float(null_step.loc[target]["spearman"])
             step_rows.append(
                 {
                     "scale": "transition_level",
                     "channel": channel,
                     "target": target,
                     "target_label": label,
-                    "channel_value": channel_rho,
-                    "null_value": null_rho,
-                    "lift": channel_rho - null_rho,
+                    "metric": "spearman_rho",
+                    "value": channel_rho,
                 }
             )
 
     return pd.DataFrame([*run_rows, *step_rows])
 
 
-def plot_main_channel_lift(raw_rate_regression_df: pd.DataFrame, step_diagnostics_df: pd.DataFrame) -> pd.DataFrame:
-    channels = [channel for channel in CHANNEL_ORDER if channel != "null"]
+def build_appendix_motion_diagnostics_table(
+    raw_rate_regression_df: pd.DataFrame,
+    step_diagnostics_df: pd.DataFrame,
+) -> pd.DataFrame:
+    channels = CHANNEL_ORDER
+    run_targets = [
+        ("Mean_abs_delta_loss_T", "pointwise loss motion"),
+        ("Mean_abs_delta_error_T", "pointwise error motion"),
+        ("Eval_within_step_drift_T", "held-out step shift"),
+    ]
+    step_targets = [
+        ("mean_abs_delta_loss", "pointwise loss motion"),
+        ("mean_abs_delta_error", "pointwise error motion"),
+        ("eval_within_step_drift", "held-out step shift"),
+    ]
+    positive_step = step_diagnostics_df[step_diagnostics_df["mu"].astype(str) == "all_positive"].copy()
+    rows = []
+    for channel in channels:
+        for target, label in run_targets:
+            channel_row = raw_rate_regression_df[
+                (raw_rate_regression_df["channel"] == channel) & (raw_rate_regression_df["target"] == target)
+            ]
+            if channel_row.empty:
+                continue
+            rows.append(
+                {
+                    "scale": "run_level",
+                    "channel": channel,
+                    "channel_label": channel_label(channel),
+                    "target": target,
+                    "target_label": label,
+                    "metric": "raw_rate_r2",
+                    "value": float(channel_row.iloc[0]["r2_in_sample"]),
+                }
+            )
+        for target, label in step_targets:
+            channel_row = positive_step[(positive_step["channel"] == channel) & (positive_step["target"] == target)]
+            if channel_row.empty:
+                continue
+            rows.append(
+                {
+                    "scale": "transition_level",
+                    "channel": channel,
+                    "channel_label": channel_label(channel),
+                    "target": target,
+                    "target_label": label,
+                    "metric": "spearman_rho",
+                    "value": float(channel_row.iloc[0]["spearman"]),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def build_gain_over_coarse_table(association_df: pd.DataFrame) -> pd.DataFrame:
+    if association_df.empty:
+        return pd.DataFrame()
+    coarse = association_df[association_df["channel"] == "coarse"].set_index(["scale", "target"])
+    rows = []
+    for _, row in association_df[~association_df["channel"].isin(["null", "coarse"])].iterrows():
+        key = (row["scale"], row["target"])
+        if key not in coarse.index:
+            continue
+        coarse_value = float(coarse.loc[key]["value"])
+        channel_value = float(row["value"])
+        rows.append(
+            {
+                "scale": row["scale"],
+                "target": row["target"],
+                "target_label": row["target_label"],
+                "channel": row["channel"],
+                "channel_label": channel_label(row["channel"]),
+                "channel_value": channel_value,
+                "coarse_score_value": coarse_value,
+                "gain_over_coarse_score": channel_value - coarse_value,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def plot_main_channel_association_summary(
+    raw_rate_regression_df: pd.DataFrame,
+    step_diagnostics_df: pd.DataFrame,
+) -> pd.DataFrame:
+    channels = CHANNEL_ORDER
     run_targets = [
         ("V_T", r"$V_T$"),
-        ("Mean_abs_delta_loss_T", "loss motion"),
+        ("Delta_rep_T", r"$\Delta_T^{\mathrm{rep}}$"),
     ]
     step_targets = [
         ("v_t", r"$v_t$"),
-        ("mean_abs_delta_loss", "loss motion"),
     ]
-    lift_df = build_channel_lift_table(raw_rate_regression_df, step_diagnostics_df)
-    if lift_df.empty:
-        return lift_df
+    association_df = build_channel_association_summary_table(raw_rate_regression_df, step_diagnostics_df)
+    if association_df.empty:
+        return association_df
 
     fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.75), layout="constrained")
     bar_width = 0.36
@@ -2210,40 +2184,42 @@ def plot_main_channel_lift(raw_rate_regression_df: pd.DataFrame, step_diagnostic
 
     for idx, (target, label) in enumerate(run_targets):
         values = [
-            float(lift_df[(lift_df["scale"] == "run_level") & (lift_df["channel"] == channel) & (lift_df["target"] == target)]["lift"].iloc[0])
-            if not lift_df[(lift_df["scale"] == "run_level") & (lift_df["channel"] == channel) & (lift_df["target"] == target)].empty
+            float(association_df[(association_df["scale"] == "run_level") & (association_df["channel"] == channel) & (association_df["target"] == target)]["value"].iloc[0])
+            if not association_df[(association_df["scale"] == "run_level") & (association_df["channel"] == channel) & (association_df["target"] == target)].empty
             else float("nan")
             for channel in channels
         ]
         axes[0].bar(x + (idx - 0.5) * bar_width, values, width=bar_width, label=label, color=PALETTE[idx])
     axes[0].axhline(0.0, color="black", lw=0.7)
-    axes[0].set_ylabel(r"Lift over null blind in raw-rate $R^2$")
+    axes[0].set_ylabel(r"Raw-rate regression $R^2$")
+    axes[0].set_ylim(0.0, 1.0)
     axes[0].set_xticks(x)
     axes[0].set_xticklabels([channel_label(channel) for channel in channels], rotation=25, ha="right", fontsize=7.0)
     axes[0].legend(frameon=False, fontsize=7.0, loc="upper left")
 
-    for idx, (target, label) in enumerate(step_targets):
-        values = [
-            float(lift_df[(lift_df["scale"] == "transition_level") & (lift_df["channel"] == channel) & (lift_df["target"] == target)]["lift"].iloc[0])
-            if not lift_df[(lift_df["scale"] == "transition_level") & (lift_df["channel"] == channel) & (lift_df["target"] == target)].empty
-            else float("nan")
-            for channel in channels
-        ]
-        axes[1].bar(x + (idx - 0.5) * bar_width, values, width=bar_width, label=label, color=PALETTE[idx])
+    target, label = step_targets[0]
+    values = [
+        float(association_df[(association_df["scale"] == "transition_level") & (association_df["channel"] == channel) & (association_df["target"] == target)]["value"].iloc[0])
+        if not association_df[(association_df["scale"] == "transition_level") & (association_df["channel"] == channel) & (association_df["target"] == target)].empty
+        else float("nan")
+        for channel in channels
+    ]
+    axes[1].bar(x, values, width=0.58, label=label, color=PALETTE[0])
     axes[1].axhline(0.0, color="black", lw=0.7)
-    axes[1].set_ylabel(r"Lift over null blind in Spearman $\rho$")
+    axes[1].set_ylabel(r"Spearman $\rho$")
+    axes[1].set_ylim(0.0, 1.0)
     axes[1].set_xticks(x)
     axes[1].set_xticklabels([channel_label(channel) for channel in channels], rotation=25, ha="right", fontsize=7.0)
     axes[1].legend(frameon=False, fontsize=7.0, loc="upper left")
 
     for label, ax in zip(["(a)", "(b)"], axes):
-        ax.text(0.02, 0.96, label, transform=ax.transAxes, ha="left", va="top", fontsize=8.0)
+        ax.text(0.98, 0.96, label, transform=ax.transAxes, ha="right", va="top", fontsize=8.0)
         ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
         ax.yaxis.set_minor_locator(AutoMinorLocator())
         ax.grid(axis="y", which="major", alpha=0.25, linewidth=0.6)
 
-    save_figure_all_formats(fig, OUTPUT_DIR / "figure_main_channel_lift.png")
-    return lift_df
+    save_figure_all_formats(fig, OUTPUT_DIR / "figure_main_channel_association_summary.png")
+    return association_df
 
 
 def plot_main_step_fr_association(step_diagnostics_df: pd.DataFrame) -> pd.DataFrame:
@@ -2262,7 +2238,7 @@ def plot_main_step_fr_association(step_diagnostics_df: pd.DataFrame) -> pd.DataF
     ax.set_ylabel(r"Spearman $\rho(\mathrm{FR\ step}, v_t)$")
     ax.set_xticks(x)
     ax.set_xticklabels([channel_label(channel) for channel in step_vt["channel"]], rotation=25, ha="right", fontsize=7.0)
-    ax.set_ylim(0.0, max(0.7, float(step_vt["spearman"].max()) + 0.08))
+    ax.set_ylim(0.0, 1.0)
     ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
     ax.yaxis.set_minor_locator(AutoMinorLocator())
     ax.grid(axis="y", which="major", alpha=0.25, linewidth=0.6)
@@ -2341,9 +2317,9 @@ def plot_appendix_operational_spearman_heatmap(operational_df: pd.DataFrame) -> 
     ]
     value_labels = [
         "Condition mean FR\nvs $V_T$",
-        "Condition mean FR\nvs loss motion",
+        "Condition mean FR\nvs pointwise loss motion",
         "Per-step FR\nvs $v_t$",
-        "Per-step FR\nvs loss motion",
+        "Per-step FR\nvs pointwise loss motion",
     ]
     available_cols = [col for col in value_cols if col in plot_df.columns]
     available_labels = [label for col, label in zip(value_cols, value_labels) if col in plot_df.columns]
@@ -2451,7 +2427,7 @@ def make_plots(
     step_diagnostics_df: pd.DataFrame,
 ) -> None:
     n_seeds = results_df["seed"].nunique()
-    plot_main_channel_lift(raw_rate_regression_df, step_diagnostics_df)
+    plot_main_channel_association_summary(raw_rate_regression_df, step_diagnostics_df)
     plot_main_step_fr_association(step_diagnostics_df)
     plot_main_feedback_manipulation_check(summary_df, n_seeds)
     plot_appendix_run_level_raw_rate_r2_heatmap(raw_rate_regression_df)
@@ -2516,9 +2492,10 @@ def write_outputs_readme(outpath: Path) -> None:
         "",
         "- `RESULTS_DASHBOARD.md`: paper-facing result summary.",
         "- `main_figure_values_summary.txt`: exact values used in the main figures.",
-        "- `figure_main_channel_lift.*`: lift over the true null blind baseline for run-level and transition-level diagnostics.",
+        "- `figure_main_channel_association_summary.*`: run-level raw-rate $R^2$ for $V_T$ and $\\Delta_T^{\\mathrm{rep}}$, plus transition-level Spearman $\\rho$ for $v_t$.",
         "- `figure_main_step_fr_association.*`: positive-feedback transition Spearman association between per-step observed FR and $v_t$, including null.",
         "- `figure_main_feedback_manipulation_check.*`: secondary manipulation check against feedback strength $\\mu$.",
+        "- `table_channel_association_summary.csv`: values shown in the main channel association figure.",
         "- `regional_feedback_raw_rate_regressions.csv`: raw-rate single-channel regressions with no $\\mu$ covariate.",
         "- `regional_feedback_step_diagnostics.csv`: transition-level association diagnostics.",
         "- `table_operational_raw_rate_diagnostics.csv`: compact operational diagnostics table.",
@@ -2526,7 +2503,11 @@ def write_outputs_readme(outpath: Path) -> None:
         "## Appendix Diagnostics",
         "",
         "Appendix files live in `appendix_diagnostics/`.",
+        "CSV files use the literal channel id `null`; with pandas, read these files with `keep_default_na=False` if you need to preserve that string instead of parsing it as missing.",
         "The pooled raw-rate $R^2$ heatmap is appendix-only because it primarily summarizes regime-level co-movement and should not be interpreted as calibrated run-level prediction.",
+        "`appendix_table_gain_over_coarse_score.csv` reports channel minus Coarse score diagnostics for task-relevant channels.",
+        "`appendix_table_motion_diagnostics.csv` reports unsigned pointwise loss/error motion and held-out step-shift diagnostics.",
+        "Unsigned pointwise loss motion removes cancellation before averaging, so it is expected to align more strongly with unsigned Fisher motion than $\\Delta_T^{\\mathrm{rep}}$.",
         "Excess rates are controlled attribution diagnostics only, because deployment does not have matched $\\mu=0$ counterfactuals.",
         "Leave-one-$\\mu$-out asks a stronger cross-regime extrapolation question than the observability claim.",
         "Seed-level within-$\\mu$ associations ask whether naive fixed channels rank run-level severity at fixed feedback strength.",
@@ -2549,33 +2530,61 @@ def write_main_figure_values_summary(
     lines = [
         "Main figure values for regional feedback observability experiment",
         "",
-        "Figure A: raw-rate regression R^2 heatmap",
-        "Each value is from target ~ raw observed FR rate for one channel, with no feedback-strength covariate and no excess-rate subtraction.",
+        "Figure A: channel association summary",
+        "Panel (a) reports run-level raw-rate R^2 for $V_T$ and $\\Delta_T^{\\mathrm{rep}}$.",
+        "Panel (b) reports transition-level Spearman rho for $v_t$.",
+        "Null blind is a fixed row-bucket negative control with no observed Fisher motion.",
+        "Pointwise loss-motion diagnostics are appendix-only because they are unsigned cancellation-free quantities.",
         "",
     ]
-    heatmap_targets = [
-        "V_T",
-        "Delta_rep_T",
-        "Delta_sam_T",
-        "Eval_within_step_drift_T",
-        "Mean_abs_delta_loss_T",
-        "Mean_abs_delta_error_T",
-    ]
-    for channel in CHANNEL_ORDER:
-        lines.append(f"{channel_label(channel)}:")
-        for target in heatmap_targets:
-            row = raw_rate_regression_df[
-                (raw_rate_regression_df["channel"] == channel) & (raw_rate_regression_df["target"] == target)
+    association_df = build_channel_association_summary_table(raw_rate_regression_df, step_diagnostics_df)
+    for scale in ["run_level", "transition_level"]:
+        scale_df = association_df[association_df["scale"] == scale]
+        lines.append(f"{scale}:")
+        for _, row in scale_df.sort_values(["target", "channel"]).iterrows():
+            lines.append(
+                f"  {channel_label(row['channel'])}, {target_label(row['target'])}: "
+                f"{row['metric']}={float(row['value']):.6g}"
+            )
+        lines.append("")
+
+    gain_df = build_gain_over_coarse_table(association_df)
+    if not gain_df.empty:
+        lines.extend(
+            [
+                "Appendix: gain over Coarse score",
+                "Gain is channel value minus the Coarse score baseline for the same target and scale.",
+                "",
             ]
-            if row.empty:
-                continue
-            lines.append(f"  {target_label(target)}: R^2={float(row.iloc[0]['r2_in_sample']):.6g}")
+        )
+        for _, row in gain_df.sort_values(["scale", "target", "channel"]).iterrows():
+            lines.append(
+                f"{row['scale']}, {channel_label(row['channel'])}, {target_label(row['target'])}: "
+                f"channel={float(row['channel_value']):.6g}, coarse={float(row['coarse_score_value']):.6g}, "
+                f"gain={float(row['gain_over_coarse_score']):.6g}"
+            )
+        lines.append("")
+
+    motion_df = build_appendix_motion_diagnostics_table(raw_rate_regression_df, step_diagnostics_df)
+    if not motion_df.empty:
+        lines.extend(
+            [
+                "Appendix: unsigned motion diagnostics",
+                "These diagnostics remove cancellation before averaging and are supporting evidence only.",
+                "",
+            ]
+        )
+        for _, row in motion_df.sort_values(["scale", "target", "channel"]).iterrows():
+            lines.append(
+                f"{row['scale']}, {channel_label(row['channel'])}, {row['target_label']}: "
+                f"{row['metric']}={float(row['value']):.6g}"
+            )
         lines.append("")
 
     lines.extend(
         [
-            "Figure B: per-transition association by channel",
-            "Values are Spearman correlations between per-step observed FR and $v_t$ over positive-feedback transitions.",
+        "Figure B: per-transition association by channel",
+        "Values are Spearman correlations between per-step observed FR and $v_t$ over positive-feedback transitions.",
             "",
         ]
     )
@@ -2598,7 +2607,7 @@ def write_main_figure_values_summary(
     manipulation_cols = [
         ("V_T_mean", "$V_T$ mean"),
         ("Delta_rep_T_mean", "$\\Delta_T^{\\mathrm{rep}}$ mean"),
-        ("A_rate_blind_mean", "Weak blind raw observed FR mean"),
+        ("A_rate_null_mean", "Null blind raw observed FR mean"),
         ("A_rate_coarse_mean", "Coarse score raw observed FR mean"),
         ("A_rate_task_mean", "Task-aligned raw observed FR mean"),
     ]
@@ -2624,6 +2633,8 @@ def cleanup_obsolete_public_outputs() -> None:
         "figure_7_best_raw_rate_regression_fits.*",
         "figure_8_condition_mean_raw_fr_vs_risk.*",
         "figure_8_condition_mean_raw_fr_vs_risk_focus.*",
+        "figure_main_operational_raw_rate_r2_heatmap.*",
+        "figure_main_channel_lift.*",
         "regression_interpretation.txt",
         "regional_feedback_regressions.csv",
         "regional_feedback_regressions_cv.csv",
@@ -2729,12 +2740,21 @@ def main() -> None:
         raw_rate_condition_mean_trend_df,
         step_diagnostics_df,
     )
+    channel_association_summary_df = build_channel_association_summary_table(
+        raw_rate_regression_df,
+        step_diagnostics_df,
+    )
+    gain_over_coarse_df = build_gain_over_coarse_table(channel_association_summary_df)
+    appendix_motion_diagnostics_df = build_appendix_motion_diagnostics_table(
+        raw_rate_regression_df,
+        step_diagnostics_df,
+    )
     primary_pairwise_tests_df = build_pairwise_excess_tests_table(
         results_df,
         comparisons=[
-            ("blind_vs_coarse", "blind", "coarse"),
+            ("null_vs_coarse", "null", "coarse"),
             ("coarse_vs_task", "coarse", "task"),
-            ("blind_vs_task", "blind", "task"),
+            ("null_vs_task", "null", "task"),
         ],
         contrast_label="right_minus_left",
     )
@@ -2751,6 +2771,7 @@ def main() -> None:
     raw_rate_regression_df.to_csv(OUTPUT_DIR / "regional_feedback_raw_rate_regressions.csv", index=False)
     raw_rate_condition_mean_trend_df.to_csv(OUTPUT_DIR / "regional_feedback_condition_mean_trends.csv", index=False)
     raw_rate_operational_summary_df.to_csv(OUTPUT_DIR / "table_operational_raw_rate_diagnostics.csv", index=False)
+    channel_association_summary_df.to_csv(OUTPUT_DIR / "table_channel_association_summary.csv", index=False)
 
     corr_df.to_csv(APPENDIX_OUTPUT_DIR / "appendix_excess_rate_correlations.csv", index=False)
     channel_comparison_df.to_csv(APPENDIX_OUTPUT_DIR / "appendix_excess_rate_channel_comparison.csv", index=False)
@@ -2761,6 +2782,8 @@ def main() -> None:
     within_mu_summary_df.to_csv(APPENDIX_OUTPUT_DIR / "table_appendix_excess_rate_diagnostics.csv", index=False)
     condition_mean_trend_df.to_csv(APPENDIX_OUTPUT_DIR / "appendix_excess_rate_condition_mean_trends.csv", index=False)
     raw_rate_within_mu_df.to_csv(APPENDIX_OUTPUT_DIR / "appendix_raw_rate_within_mu_seed_associations.csv", index=False)
+    gain_over_coarse_df.to_csv(APPENDIX_OUTPUT_DIR / "appendix_table_gain_over_coarse_score.csv", index=False)
+    appendix_motion_diagnostics_df.to_csv(APPENDIX_OUTPUT_DIR / "appendix_table_motion_diagnostics.csv", index=False)
     primary_pairwise_tests_df.to_csv(APPENDIX_OUTPUT_DIR / "appendix_pairwise_excess_tests.csv", index=False)
     ablation_pairwise_tests_df.to_csv(APPENDIX_OUTPUT_DIR / "appendix_ablation_pairwise_excess_tests.csv", index=False)
 
