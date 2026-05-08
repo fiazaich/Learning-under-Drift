@@ -7,120 +7,120 @@ Null blind is a fixed row-bucket negative control with no observed Fisher motion
 Pointwise loss-motion diagnostics are appendix-only because they are unsigned cancellation-free quantities.
 
 run_level:
-  Coarse score, $\Delta_T^{\mathrm{rep}}$: raw_rate_r2=0.344869
+  Coarse score, $\Delta_T^{\mathrm{rep}}$: raw_rate_r2=0.402486
   Null blind, $\Delta_T^{\mathrm{rep}}$: raw_rate_r2=0
-  Task-aligned, $\Delta_T^{\mathrm{rep}}$: raw_rate_r2=0.488587
-  Task minus cost, $\Delta_T^{\mathrm{rep}}$: raw_rate_r2=0.529336
-  Task minus subgroup, $\Delta_T^{\mathrm{rep}}$: raw_rate_r2=0.496755
-  Task minus quantity, $\Delta_T^{\mathrm{rep}}$: raw_rate_r2=0.385602
-  Coarse score, $V_T$: raw_rate_r2=0.590346
+  Task-aligned, $\Delta_T^{\mathrm{rep}}$: raw_rate_r2=0.518489
+  Task minus cost, $\Delta_T^{\mathrm{rep}}$: raw_rate_r2=0.558698
+  Task minus subgroup, $\Delta_T^{\mathrm{rep}}$: raw_rate_r2=0.517727
+  Task minus quantity, $\Delta_T^{\mathrm{rep}}$: raw_rate_r2=0.420827
+  Coarse score, $V_T$: raw_rate_r2=0.613369
   Null blind, $V_T$: raw_rate_r2=0
-  Task-aligned, $V_T$: raw_rate_r2=0.793795
-  Task minus cost, $V_T$: raw_rate_r2=0.855319
-  Task minus subgroup, $V_T$: raw_rate_r2=0.8068
-  Task minus quantity, $V_T$: raw_rate_r2=0.633772
+  Task-aligned, $V_T$: raw_rate_r2=0.801637
+  Task minus cost, $V_T$: raw_rate_r2=0.848176
+  Task minus subgroup, $V_T$: raw_rate_r2=0.802813
+  Task minus quantity, $V_T$: raw_rate_r2=0.650497
 
 transition_level:
-  Coarse score, $v_t$: spearman_rho=0.161915
+  Coarse score, $v_t$: spearman_rho=0.271789
   Null blind, $v_t$: spearman_rho=0
-  Task-aligned, $v_t$: spearman_rho=0.572735
-  Task minus cost, $v_t$: spearman_rho=0.569352
-  Task minus subgroup, $v_t$: spearman_rho=0.577863
-  Task minus quantity, $v_t$: spearman_rho=0.304458
+  Task-aligned, $v_t$: spearman_rho=0.635411
+  Task minus cost, $v_t$: spearman_rho=0.622948
+  Task minus subgroup, $v_t$: spearman_rho=0.630807
+  Task minus quantity, $v_t$: spearman_rho=0.425056
 
 Appendix: gain over Coarse score
 Gain is channel value minus the Coarse score baseline for the same target and scale.
 
-run_level, Task-aligned, $\Delta_T^{\mathrm{rep}}$: channel=0.488587, coarse=0.344869, gain=0.143718
-run_level, Task minus cost, $\Delta_T^{\mathrm{rep}}$: channel=0.529336, coarse=0.344869, gain=0.184466
-run_level, Task minus subgroup, $\Delta_T^{\mathrm{rep}}$: channel=0.496755, coarse=0.344869, gain=0.151886
-run_level, Task minus quantity, $\Delta_T^{\mathrm{rep}}$: channel=0.385602, coarse=0.344869, gain=0.0407323
-run_level, Task-aligned, $V_T$: channel=0.793795, coarse=0.590346, gain=0.20345
-run_level, Task minus cost, $V_T$: channel=0.855319, coarse=0.590346, gain=0.264974
-run_level, Task minus subgroup, $V_T$: channel=0.8068, coarse=0.590346, gain=0.216454
-run_level, Task minus quantity, $V_T$: channel=0.633772, coarse=0.590346, gain=0.043426
-transition_level, Task-aligned, $v_t$: channel=0.572735, coarse=0.161915, gain=0.41082
-transition_level, Task minus cost, $v_t$: channel=0.569352, coarse=0.161915, gain=0.407437
-transition_level, Task minus subgroup, $v_t$: channel=0.577863, coarse=0.161915, gain=0.415948
-transition_level, Task minus quantity, $v_t$: channel=0.304458, coarse=0.161915, gain=0.142543
+run_level, Task-aligned, $\Delta_T^{\mathrm{rep}}$: channel=0.518489, coarse=0.402486, gain=0.116002
+run_level, Task minus cost, $\Delta_T^{\mathrm{rep}}$: channel=0.558698, coarse=0.402486, gain=0.156212
+run_level, Task minus subgroup, $\Delta_T^{\mathrm{rep}}$: channel=0.517727, coarse=0.402486, gain=0.115241
+run_level, Task minus quantity, $\Delta_T^{\mathrm{rep}}$: channel=0.420827, coarse=0.402486, gain=0.018341
+run_level, Task-aligned, $V_T$: channel=0.801637, coarse=0.613369, gain=0.188268
+run_level, Task minus cost, $V_T$: channel=0.848176, coarse=0.613369, gain=0.234807
+run_level, Task minus subgroup, $V_T$: channel=0.802813, coarse=0.613369, gain=0.189444
+run_level, Task minus quantity, $V_T$: channel=0.650497, coarse=0.613369, gain=0.0371274
+transition_level, Task-aligned, $v_t$: channel=0.635411, coarse=0.271789, gain=0.363621
+transition_level, Task minus cost, $v_t$: channel=0.622948, coarse=0.271789, gain=0.351158
+transition_level, Task minus subgroup, $v_t$: channel=0.630807, coarse=0.271789, gain=0.359018
+transition_level, Task minus quantity, $v_t$: channel=0.425056, coarse=0.271789, gain=0.153267
 
 Appendix: unsigned motion diagnostics
 These diagnostics remove cancellation before averaging and are supporting evidence only.
 
-run_level, Coarse score, held-out step shift: raw_rate_r2=0.589842
+run_level, Coarse score, held-out step shift: raw_rate_r2=0.619685
 run_level, Null blind, held-out step shift: raw_rate_r2=0
-run_level, Task-aligned, held-out step shift: raw_rate_r2=0.787646
-run_level, Task minus cost, held-out step shift: raw_rate_r2=0.847457
-run_level, Task minus subgroup, held-out step shift: raw_rate_r2=0.800379
-run_level, Task minus quantity, held-out step shift: raw_rate_r2=0.629824
-run_level, Coarse score, pointwise error motion: raw_rate_r2=0.674786
+run_level, Task-aligned, held-out step shift: raw_rate_r2=0.810418
+run_level, Task minus cost, held-out step shift: raw_rate_r2=0.856103
+run_level, Task minus subgroup, held-out step shift: raw_rate_r2=0.811342
+run_level, Task minus quantity, held-out step shift: raw_rate_r2=0.656594
+run_level, Coarse score, pointwise error motion: raw_rate_r2=0.717069
 run_level, Null blind, pointwise error motion: raw_rate_r2=0
-run_level, Task-aligned, pointwise error motion: raw_rate_r2=0.861712
-run_level, Task minus cost, pointwise error motion: raw_rate_r2=0.919484
-run_level, Task minus subgroup, pointwise error motion: raw_rate_r2=0.874267
-run_level, Task minus quantity, pointwise error motion: raw_rate_r2=0.714631
-run_level, Coarse score, pointwise loss motion: raw_rate_r2=0.707586
+run_level, Task-aligned, pointwise error motion: raw_rate_r2=0.8791
+run_level, Task minus cost, pointwise error motion: raw_rate_r2=0.91913
+run_level, Task minus subgroup, pointwise error motion: raw_rate_r2=0.884696
+run_level, Task minus quantity, pointwise error motion: raw_rate_r2=0.751758
+run_level, Coarse score, pointwise loss motion: raw_rate_r2=0.713574
 run_level, Null blind, pointwise loss motion: raw_rate_r2=0
-run_level, Task-aligned, pointwise loss motion: raw_rate_r2=0.885212
-run_level, Task minus cost, pointwise loss motion: raw_rate_r2=0.93557
-run_level, Task minus subgroup, pointwise loss motion: raw_rate_r2=0.89651
-run_level, Task minus quantity, pointwise loss motion: raw_rate_r2=0.746394
-transition_level, Coarse score, held-out step shift: spearman_rho=0.129134
+run_level, Task-aligned, pointwise loss motion: raw_rate_r2=0.877907
+run_level, Task minus cost, pointwise loss motion: raw_rate_r2=0.916945
+run_level, Task minus subgroup, pointwise loss motion: raw_rate_r2=0.881486
+run_level, Task minus quantity, pointwise loss motion: raw_rate_r2=0.747719
+transition_level, Coarse score, held-out step shift: spearman_rho=0.227561
 transition_level, Null blind, held-out step shift: spearman_rho=0
-transition_level, Task-aligned, held-out step shift: spearman_rho=0.530109
-transition_level, Task minus cost, held-out step shift: spearman_rho=0.521336
-transition_level, Task minus subgroup, held-out step shift: spearman_rho=0.533686
-transition_level, Task minus quantity, held-out step shift: spearman_rho=0.260871
-transition_level, Coarse score, pointwise error motion: spearman_rho=0.739336
+transition_level, Task-aligned, held-out step shift: spearman_rho=0.574688
+transition_level, Task minus cost, held-out step shift: spearman_rho=0.562741
+transition_level, Task minus subgroup, held-out step shift: spearman_rho=0.569223
+transition_level, Task minus quantity, held-out step shift: spearman_rho=0.366648
+transition_level, Coarse score, pointwise error motion: spearman_rho=0.683716
 transition_level, Null blind, pointwise error motion: spearman_rho=0
-transition_level, Task-aligned, pointwise error motion: spearman_rho=0.83304
-transition_level, Task minus cost, pointwise error motion: spearman_rho=0.836499
-transition_level, Task minus subgroup, pointwise error motion: spearman_rho=0.826821
-transition_level, Task minus quantity, pointwise error motion: spearman_rho=0.748724
-transition_level, Coarse score, pointwise loss motion: spearman_rho=0.389143
+transition_level, Task-aligned, pointwise error motion: spearman_rho=0.754573
+transition_level, Task minus cost, pointwise error motion: spearman_rho=0.768241
+transition_level, Task minus subgroup, pointwise error motion: spearman_rho=0.756997
+transition_level, Task minus quantity, pointwise error motion: spearman_rho=0.687217
+transition_level, Coarse score, pointwise loss motion: spearman_rho=0.423248
 transition_level, Null blind, pointwise loss motion: spearman_rho=0
-transition_level, Task-aligned, pointwise loss motion: spearman_rho=0.807152
-transition_level, Task minus cost, pointwise loss motion: spearman_rho=0.808143
-transition_level, Task minus subgroup, pointwise loss motion: spearman_rho=0.810902
-transition_level, Task minus quantity, pointwise loss motion: spearman_rho=0.49118
+transition_level, Task-aligned, pointwise loss motion: spearman_rho=0.739201
+transition_level, Task minus cost, pointwise loss motion: spearman_rho=0.729025
+transition_level, Task minus subgroup, pointwise loss motion: spearman_rho=0.731314
+transition_level, Task minus quantity, pointwise loss motion: spearman_rho=0.509249
 
 Figure B: per-transition association by channel
 Values are Spearman correlations between per-step observed FR and $v_t$ over positive-feedback transitions.
 
-Task minus subgroup: Spearman rho=0.577863, n=570
-Task-aligned: Spearman rho=0.572735, n=570
-Task minus cost: Spearman rho=0.569352, n=570
-Task minus quantity: Spearman rho=0.304458, n=570
-Coarse score: Spearman rho=0.161915, n=570
+Task-aligned: Spearman rho=0.635411, n=570
+Task minus subgroup: Spearman rho=0.630807, n=570
+Task minus cost: Spearman rho=0.622948, n=570
+Task minus quantity: Spearman rho=0.425056, n=570
+Coarse score: Spearman rho=0.271789, n=570
 Null blind: Spearman rho=0, n=570
 
 Figure C: manipulation check condition means
 Values are condition means by feedback strength. Standard errors in the figure are computed across seeds.
 
 $\mu$=0:
-  $V_T$ mean: 1485.753688
-  $\Delta_T^{\mathrm{rep}}$ mean: 2682.793911
+  $V_T$ mean: 1514.856352
+  $\Delta_T^{\mathrm{rep}}$ mean: 2424.382396
   Null blind raw observed FR mean: 0
-  Coarse score raw observed FR mean: 0.005483104057
-  Task-aligned raw observed FR mean: 0.05013771589
+  Coarse score raw observed FR mean: 0.005981339135
+  Task-aligned raw observed FR mean: 0.05066128684
 
 $\mu$=0.05:
-  $V_T$ mean: 2632.074173
-  $\Delta_T^{\mathrm{rep}}$ mean: 3483.199629
+  $V_T$ mean: 3146.0014
+  $\Delta_T^{\mathrm{rep}}$ mean: 3433.009583
   Null blind raw observed FR mean: 0
-  Coarse score raw observed FR mean: 0.04306781797
-  Task-aligned raw observed FR mean: 0.09817440595
+  Coarse score raw observed FR mean: 0.04239270868
+  Task-aligned raw observed FR mean: 0.09653679894
 
 $\mu$=0.1:
-  $V_T$ mean: 5082.420444
-  $\Delta_T^{\mathrm{rep}}$ mean: 4750.335657
+  $V_T$ mean: 6078.380134
+  $\Delta_T^{\mathrm{rep}}$ mean: 4771.597409
   Null blind raw observed FR mean: 0
-  Coarse score raw observed FR mean: 0.05692983454
-  Task-aligned raw observed FR mean: 0.1255727225
+  Coarse score raw observed FR mean: 0.05636373459
+  Task-aligned raw observed FR mean: 0.1262534887
 
 $\mu$=0.2:
-  $V_T$ mean: 15809.6588
-  $\Delta_T^{\mathrm{rep}}$ mean: 15340.65826
+  $V_T$ mean: 18959.45402
+  $\Delta_T^{\mathrm{rep}}$ mean: 17322.6692
   Null blind raw observed FR mean: 0
-  Coarse score raw observed FR mean: 0.07003873416
-  Task-aligned raw observed FR mean: 0.1685908644
+  Coarse score raw observed FR mean: 0.07051566204
+  Task-aligned raw observed FR mean: 0.1699578013

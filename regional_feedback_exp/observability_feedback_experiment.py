@@ -77,6 +77,8 @@ B_Q = 0.3
 NOISE_SCALE_Q = 0.02
 NOISE_SCALE_C = 0.02
 NOISE_SCALE_Y = 0.02
+RESPONSE_NOISE_SCALE = 0.15
+COMMON_FEEDBACK_SHOCK_SCALE = 0.20
 
 COARSE_SCORE_BINS = 5
 NULL_RANDOM_BUCKETS = 8
@@ -494,22 +496,27 @@ def apply_feedback_one_round(
     r = preds_t - float(np.mean(preds_t))
     r_std = float(np.std(r)) + EPS
     r_tilde = r / r_std
-    response = np.tanh(r_tilde)
+    response_noise = rng.normal(0.0, RESPONSE_NOISE_SCALE, size=len(df_t))
+    response = np.tanh(r_tilde + response_noise)
 
     g = make_group_indicator(df_t[GROUP_COL])
 
     noise_q = rng.normal(0.0, scales.sigma_q, size=len(df_t))
     noise_c = rng.normal(0.0, scales.sigma_c, size=len(df_t))
     noise_y = rng.normal(0.0, scales.sigma_y, size=len(df_t))
+    common_q = rng.normal(0.0, mu * COMMON_FEEDBACK_SHOCK_SCALE * scales.q_sd)
+    common_c = rng.normal(0.0, mu * COMMON_FEEDBACK_SHOCK_SCALE * scales.c_sd)
+    common_y = rng.normal(0.0, mu * COMMON_FEEDBACK_SHOCK_SCALE * scales.y_sd)
+    feedback_multiplier = max(0.0, 1.0 + rng.normal(0.0, COMMON_FEEDBACK_SHOCK_SCALE))
 
-    delta_q = -mu * scales.q_sd * response + noise_q
-    delta_c = mu * scales.c_sd * (1.0 + RHO * g) * response + noise_c
+    delta_q = -mu * feedback_multiplier * scales.q_sd * response + common_q + noise_q
+    delta_c = mu * feedback_multiplier * scales.c_sd * (1.0 + RHO * g) * response + common_c + noise_c
     delta_y_std = (
-        mu * response
+        mu * feedback_multiplier * response
         + B_C * (delta_c / scales.c_sd)
         - B_Q * (delta_q / scales.q_sd)
     )
-    delta_y = scales.y_sd * delta_y_std + noise_y
+    delta_y = scales.y_sd * delta_y_std + common_y + noise_y
 
     q_next = np.clip(df_t[QUANTITY_COL].to_numpy(dtype=float) + delta_q, MIN_POSITIVE_VALUE, None)
     c_next = np.clip(df_t[COST_COL].to_numpy(dtype=float) + delta_c, MIN_POSITIVE_VALUE, None)
@@ -2195,7 +2202,7 @@ def plot_main_channel_association_summary(
     axes[0].set_ylim(0.0, 1.0)
     axes[0].set_xticks(x)
     axes[0].set_xticklabels([channel_label(channel) for channel in channels], rotation=25, ha="right", fontsize=7.0)
-    axes[0].legend(frameon=False, fontsize=7.0, loc="upper left")
+    axes[0].legend(frameon=False, fontsize=7.0, loc="upper right")
 
     target, label = step_targets[0]
     values = [
@@ -2210,7 +2217,7 @@ def plot_main_channel_association_summary(
     axes[1].set_ylim(0.0, 1.0)
     axes[1].set_xticks(x)
     axes[1].set_xticklabels([channel_label(channel) for channel in channels], rotation=25, ha="right", fontsize=7.0)
-    axes[1].legend(frameon=False, fontsize=7.0, loc="upper left")
+    axes[1].legend(frameon=False, fontsize=7.0, loc="upper right")
 
     for label, ax in zip(["(a)", "(b)"], axes):
         ax.text(0.98, 0.96, label, transform=ax.transAxes, ha="right", va="top", fontsize=8.0)
@@ -2277,7 +2284,7 @@ def plot_main_feedback_manipulation_check(summary_df: pd.DataFrame, n_seeds: int
         axes[0].errorbar(mu, y, yerr=yerr, marker=marker, markersize=3.2, lw=0.9, color=color, capsize=2.0, label=label)
     axes[0].set_xlabel(r"Feedback strength $\mu$")
     axes[0].set_ylabel("Risk quantity")
-    axes[0].legend(frameon=False, fontsize=7.0, loc="upper left")
+    axes[0].legend(frameon=False, fontsize=7.0, loc="upper left", bbox_to_anchor=(0.10, 0.98))
     style_axis(axes[0])
 
     channel_specs = [
@@ -2295,7 +2302,7 @@ def plot_main_feedback_manipulation_check(summary_df: pd.DataFrame, n_seeds: int
         axes[1].errorbar(mu, y, yerr=yerr, marker=marker, markersize=3.2, lw=0.9, color=color, capsize=2.0, label=channel_label(channel))
     axes[1].set_xlabel(r"Feedback strength $\mu$")
     axes[1].set_ylabel("Raw observed FR rate")
-    axes[1].legend(frameon=False, fontsize=7.0, loc="upper left")
+    axes[1].legend(frameon=False, fontsize=7.0, loc="upper left", bbox_to_anchor=(0.10, 0.98))
     style_axis(axes[1])
 
     for label, ax in zip(["(a)", "(b)"], axes):

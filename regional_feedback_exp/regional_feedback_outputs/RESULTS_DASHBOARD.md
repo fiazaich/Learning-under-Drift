@@ -27,23 +27,23 @@ Primary drift quantities are $V_T$ and $v_t$; $\Delta_T^{\mathrm{rep}}$ is repor
 
 | scale | target_label | channel_label | value |
 | --- | --- | --- | --- |
-| run_level | $\Delta_T^{\mathrm{rep}}$ | Task minus cost | 0.529 |
-| run_level | $\Delta_T^{\mathrm{rep}}$ | Task minus subgroup | 0.497 |
-| run_level | $\Delta_T^{\mathrm{rep}}$ | Task-aligned | 0.489 |
-| run_level | $\Delta_T^{\mathrm{rep}}$ | Task minus quantity | 0.386 |
-| run_level | $\Delta_T^{\mathrm{rep}}$ | Coarse score | 0.345 |
+| run_level | $\Delta_T^{\mathrm{rep}}$ | Task minus cost | 0.559 |
+| run_level | $\Delta_T^{\mathrm{rep}}$ | Task-aligned | 0.518 |
+| run_level | $\Delta_T^{\mathrm{rep}}$ | Task minus subgroup | 0.518 |
+| run_level | $\Delta_T^{\mathrm{rep}}$ | Task minus quantity | 0.421 |
+| run_level | $\Delta_T^{\mathrm{rep}}$ | Coarse score | 0.402 |
 | run_level | $\Delta_T^{\mathrm{rep}}$ | Null blind | 0.000 |
-| run_level | $V_T$ | Task minus cost | 0.855 |
-| run_level | $V_T$ | Task minus subgroup | 0.807 |
-| run_level | $V_T$ | Task-aligned | 0.794 |
-| run_level | $V_T$ | Task minus quantity | 0.634 |
-| run_level | $V_T$ | Coarse score | 0.590 |
+| run_level | $V_T$ | Task minus cost | 0.848 |
+| run_level | $V_T$ | Task minus subgroup | 0.803 |
+| run_level | $V_T$ | Task-aligned | 0.802 |
+| run_level | $V_T$ | Task minus quantity | 0.650 |
+| run_level | $V_T$ | Coarse score | 0.613 |
 | run_level | $V_T$ | Null blind | 0.000 |
-| transition_level | $v_t$ | Task minus subgroup | 0.578 |
-| transition_level | $v_t$ | Task-aligned | 0.573 |
-| transition_level | $v_t$ | Task minus cost | 0.569 |
-| transition_level | $v_t$ | Task minus quantity | 0.304 |
-| transition_level | $v_t$ | Coarse score | 0.162 |
+| transition_level | $v_t$ | Task-aligned | 0.635 |
+| transition_level | $v_t$ | Task minus subgroup | 0.631 |
+| transition_level | $v_t$ | Task minus cost | 0.623 |
+| transition_level | $v_t$ | Task minus quantity | 0.425 |
+| transition_level | $v_t$ | Coarse score | 0.272 |
 | transition_level | $v_t$ | Null blind | 0.000 |
 
 ## Per-Transition Association
@@ -52,11 +52,11 @@ Bars in `figure_main_step_fr_association.*` report Spearman $\rho$ over positive
 
 | channel_label | n_steps | spearman |
 | --- | --- | --- |
-| Task minus subgroup | 570 | 0.578 |
-| Task-aligned | 570 | 0.573 |
-| Task minus cost | 570 | 0.569 |
-| Task minus quantity | 570 | 0.304 |
-| Coarse score | 570 | 0.162 |
+| Task-aligned | 570 | 0.635 |
+| Task minus subgroup | 570 | 0.631 |
+| Task minus cost | 570 | 0.623 |
+| Task minus quantity | 570 | 0.425 |
+| Coarse score | 570 | 0.272 |
 | Null blind | 570 | 0.000 |
 
 ## Manipulation Check Means
@@ -65,10 +65,10 @@ These means support that the feedback intervention moves the system; they are no
 
 | $\mu$ | $V_T$ mean | $\Delta_T^{\mathrm{rep}}$ mean | Null blind raw FR mean | Coarse score raw FR mean | Task-aligned raw FR mean |
 | --- | --- | --- | --- | --- | --- |
-| 0.000 | 1485.754 | 2682.794 | 0.000 | 0.005 | 0.050 |
-| 0.050 | 2632.074 | 3483.200 | 0.000 | 0.043 | 0.098 |
-| 0.100 | 5082.420 | 4750.336 | 0.000 | 0.057 | 0.126 |
-| 0.200 | 1.581e+04 | 1.534e+04 | 0.000 | 0.070 | 0.169 |
+| 0.000 | 1514.856 | 2424.382 | 0.000 | 0.006 | 0.051 |
+| 0.050 | 3146.001 | 3433.010 | 0.000 | 0.042 | 0.097 |
+| 0.100 | 6078.380 | 4771.597 | 0.000 | 0.056 | 0.126 |
+| 0.200 | 1.896e+04 | 1.732e+04 | 0.000 | 0.071 | 0.170 |
 
 ## Interpretation
 
