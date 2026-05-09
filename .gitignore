@@ -1,0 +1,51 @@
+# macOS / editor noise
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+*.swp
+*.swo
+*~
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+matplotlib_cache/
+
+# Notebook/editor checkpoints
+.ipynb_checkpoints/
+.vscode/
+.idea/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Local archives / ad hoc bundles
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Generated experiment output directories
+results/
+out/
+nn_repro_results/
+regional_feedback_outputs/
+
+# Keep regional_feedback_outputs/ trackable because the main figures and
+# result CSVs are part of the public experiment artifact.
+!regional_feedback_exp/regional_feedback_outputs/
+!regional_feedback_exp/regional_feedback_outputs/**

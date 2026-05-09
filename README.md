@@ -47,6 +47,22 @@ python fisher_rao_footprint_demo.py --T 4000 --d 5 --regime mixed --C-exo 2.0 --
 ```
 Produces `fr_footprint_rate_demo.(pdf|png)` and `fr_footprint_contraction_demo.(pdf|png)` under `results/fr_footprint_<tag>/`. Use `--multi-seed N` to also get `fr_footprint_rate_scatter.(pdf|png)`.
 
+### Regional feedback observability experiment
+
+```bash
+cd regional_feedback_exp
+python observability_feedback_experiment.py
+```
+Requires `US_Regional_Sales_Data.csv` in `regional_feedback_exp/`. Outputs are written to `regional_feedback_exp/regional_feedback_outputs/`.
+
+Main figures:
+
+- `figure_main_channel_association_summary.(pdf|png|svg)`: raw observed Fisher-rate association with \(V_T\), \(\Delta_T^{\mathrm{rep}}\), and per-transition \(v_t\).
+- `figure_main_step_fr_association.(pdf|png|svg)`: per-transition Spearman association between channel Fisher motion and \(v_t\).
+- `figure_main_feedback_manipulation_check.(pdf|png|svg)`: feedback-strength manipulation check for risk quantities and raw observed Fisher rates.
+
+Supporting CSVs are also written in the same directory: run-level results, round-level records, condition summaries, raw-rate regressions, step diagnostics, and `main_figure_values_summary.txt`.
+
 ### Quick checks
 
 - `python -m py_compile *.py` to verify imports.
@@ -64,8 +80,8 @@ Runs the Gaussian additivity and saturation experiments, the NN drift experiment
 If you use this code, please cite the accompanying paper:
 
 ```
-@misc{zaichyk2026learningdistributionaldriftreproducibility,
-      title={Learning under Distributional Drift: Reproducibility as an Intrinsic Statistical Resource}, 
+@misc{zaichyk2026learningdistributionaldriftprequential,
+      title={Learning under Distributional Drift: Prequential Reproducibility as an Intrinsic Statistical Resource}, 
       author={Sofiya Zaichyk},
       year={2026},
       eprint={2512.13506},

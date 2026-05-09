@@ -1,0 +1,7 @@
+mu,target,channel,predictor,n_steps,pearson,spearman
+all_positive,v_t,null,fr_step_null,570,0.0,0.0
+all_positive,v_t,coarse,fr_step_coarse,570,0.33341494578575864,0.26279353859118326
+all_positive,v_t,task_no_qty,fr_step_task_no_qty,570,0.39125026277721486,0.4134221792975016
+all_positive,v_t,task_no_cost,fr_step_task_no_cost,570,0.47799996423166907,0.6087098808520414
+all_positive,v_t,task_no_group,fr_step_task_no_group,570,0.48265074455152757,0.611154170826529
+all_positive,v_t,task,fr_step_task,570,0.49116576781202537,0.6111357683464708
