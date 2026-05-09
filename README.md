@@ -80,8 +80,8 @@ Runs the Gaussian additivity and saturation experiments, the NN drift experiment
 If you use this code, please cite the accompanying paper:
 
 ```
-@misc{zaichyk2026learningdistributionaldriftreproducibility,
-      title={Learning under Distributional Drift: Reproducibility as an Intrinsic Statistical Resource}, 
+@misc{zaichyk2026learningdistributionaldriftprequential,
+      title={Learning under Distributional Drift: Prequential Reproducibility as an Intrinsic Statistical Resource}, 
       author={Sofiya Zaichyk},
       year={2026},
       eprint={2512.13506},
