@@ -63,8 +63,6 @@ Main figures:
 
 Supporting CSVs are also written in the same directory: run-level results, round-level records, condition summaries, raw-rate regressions, step diagnostics, and `main_figure_values_summary.txt`.
 
-The regional feedback script is intentionally main-figure focused. It uses a true null blind row-bucket channel as a negative control, a coarse prediction-score channel, and task-structured monitoring channels. The raw observed Fisher rates are operational channel-level footprints, not calibrated estimates of the intrinsic drift budget.
-
 ### Quick checks
 
 - `python -m py_compile *.py` to verify imports.
