@@ -19,6 +19,7 @@ htmlcov/
 .venv/
 venv/
 env/
+matplotlib_cache/
 
 # Notebook/editor checkpoints
 .ipynb_checkpoints/
@@ -38,5 +39,13 @@ temp/
 *.tar.gz
 *.tgz
 
+# Generated experiment output directories
+results/
+out/
+nn_repro_results/
+regional_feedback_outputs/
+
 # Keep regional_feedback_outputs/ trackable because the main figures and
 # result CSVs are part of the public experiment artifact.
+!regional_feedback_exp/regional_feedback_outputs/
+!regional_feedback_exp/regional_feedback_outputs/**

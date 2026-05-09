@@ -46,9 +46,7 @@ mpl.rcParams.update(
 PALETTE = ["#1f77b4", "#ff7f0e"] + [plt.get_cmap("tab10")(i) for i in range(2, 10)]
 
 
-# -----------------------------
 # Config
-# -----------------------------
 
 DATA_PATH = "US_Regional_Sales_Data.csv"
 OUTPUT_DIR = Path("regional_feedback_outputs")
@@ -97,9 +95,7 @@ CHANNEL_LABELS = {
 }
 
 
-# -----------------------------
 # Utilities
-# -----------------------------
 
 def fisher_rao_categorical(p: np.ndarray, q: np.ndarray) -> float:
     inner = float(np.sum(np.sqrt(p * q)))
@@ -169,9 +165,7 @@ def make_group_indicator(series: pd.Series) -> np.ndarray:
     return (series.astype(str).to_numpy() != str(ref)).astype(int)
 
 
-# -----------------------------
 # Data and model
-# -----------------------------
 
 def load_and_prepare_base_dataframe(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
@@ -275,9 +269,7 @@ def choose_ridge_alpha(df0: pd.DataFrame) -> float:
     return float(min(scores)[1])
 
 
-# -----------------------------
 # Monitoring channels
-# -----------------------------
 
 @dataclass
 class ChannelArtifacts:
@@ -367,9 +359,7 @@ CHANNEL_PROB_FUNCTIONS = {
 }
 
 
-# -----------------------------
 # Feedback dynamics
-# -----------------------------
 
 @dataclass
 class FeedbackScales:
@@ -429,9 +419,7 @@ def apply_feedback_one_round(
     return df_next.reset_index(drop=True)
 
 
-# -----------------------------
 # Simulation and main metrics
-# -----------------------------
 
 def split_with_row_ids(df: pd.DataFrame, random_state: int) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     split_df = df.reset_index(drop=True).copy()
@@ -624,9 +612,7 @@ def build_channel_association_summary_table(
     return pd.DataFrame(rows)
 
 
-# -----------------------------
 # Main figures
-# -----------------------------
 
 def plot_main_channel_association_summary(
     raw_rate_regression_df: pd.DataFrame,
@@ -786,9 +772,7 @@ def cleanup_output_dir() -> None:
             path.unlink()
 
 
-# -----------------------------
 # Main
-# -----------------------------
 
 def main() -> None:
     df0 = load_and_prepare_base_dataframe(DATA_PATH)
