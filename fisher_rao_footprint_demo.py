@@ -31,6 +31,7 @@ Example:
 from __future__ import annotations
 
 import argparse
+import re
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
@@ -129,6 +130,30 @@ def trailing_mean(x: np.ndarray, window: int) -> np.ndarray:
         s = c[t] - (c[a - 1] if a > 0 else 0.0)
         out[t] = s / (t - a + 1)
     return out
+
+
+def kernel_label_sort_key(label: str) -> Tuple[int, str]:
+    match = re.search(r"k=(\d+)", label)
+    if match:
+        return int(match.group(1)), label
+    return 10**9, label
+
+
+def set_rate_legend_ordered_by_k(ax: plt.Axes, **legend_kwargs) -> None:
+    handles, labels = ax.get_legend_handles_labels()
+    if not handles:
+        return
+
+    intrinsic = [(h, lab) for h, lab in zip(handles, labels) if "intrinsic rate" in lab]
+    induced = [(h, lab) for h, lab in zip(handles, labels) if "intrinsic rate" not in lab]
+    induced.sort(key=lambda item: kernel_label_sort_key(item[1]), reverse=True)
+
+    ordered = intrinsic + induced
+    ax.legend(
+        [h for h, _lab in ordered],
+        [lab for _h, lab in ordered],
+        **legend_kwargs,
+    )
 
 
 def simulate_with_trajectory(
@@ -277,7 +302,7 @@ def plot_main(
     ax1.xaxis.set_major_locator(mpl.ticker.MaxNLocator(4))
     ax1.yaxis.set_major_locator(mpl.ticker.MaxNLocator(4))
     ax1.grid(True, alpha=0.25)
-    ax1.legend(loc="upper right", frameon=False)
+    set_rate_legend_ordered_by_k(ax1, loc="upper right", frameon=False)
 
     pdf1 = outdir / "fr_footprint_rate_demo.pdf"
     plt.savefig(pdf1, dpi=250, bbox_inches="tight")

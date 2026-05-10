@@ -43,7 +43,11 @@ python nn_repro_plotting.py --outdir out/nn_multiT_YYYYMMDD_HHMMSS_xxxxxx --targ
 ### Fisher–Rao footprint demo
 
 ```bash
-python fisher_rao_footprint_demo.py --T 4000 --d 5 --regime mixed --C-exo 2.0 --gamma 0.01 --k 0.25
+python fisher_rao_footprint_demo.py \
+  --T 2000 --d 5 --regime mixed --C-exo 2.0 --gamma 0.01 --k 0.25 \
+  --kdim 2 --sigmaK 0.2 --extra-kernels \
+  --burst --burst-period 600 --burst-hi 4.0 \
+  --rate-window 60
 ```
 Produces `fr_footprint_rate_demo.(pdf|png)` and `fr_footprint_contraction_demo.(pdf|png)` under `results/fr_footprint_<tag>/`. Use `--multi-seed N` to also get `fr_footprint_rate_scatter.(pdf|png)`.
 
