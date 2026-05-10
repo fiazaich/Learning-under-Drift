@@ -327,7 +327,7 @@ def plot_main(
     ax2.xaxis.set_major_locator(mpl.ticker.MaxNLocator(4))
     ax2.yaxis.set_major_locator(mpl.ticker.MaxNLocator(4))
     ax2.grid(True, alpha=0.25)
-    ax2.legend(loc="upper left", frameon=False)
+    set_rate_legend_ordered_by_k(ax2, loc="upper left", frameon=False)
 
     pdf2 = outdir / "fr_footprint_contraction_demo.pdf"
     plt.savefig(pdf2, dpi=250, bbox_inches="tight")
@@ -361,7 +361,7 @@ def plot_multi_seed_scatter(
     ax.set_ylabel("observed rate $A_T(K_{\\sharp}P)/T$")
     ax.set_title("Terminal rate contraction")
     ax.grid(True, alpha=0.25)
-    ax.legend(frameon=False, loc="upper left")
+    set_rate_legend_ordered_by_k(ax, frameon=False, loc="upper left")
 
     pdf = outdir / "fr_footprint_rate_scatter.pdf"
     plt.savefig(pdf, dpi=250, bbox_inches="tight")
