@@ -13,4 +13,8 @@ else
   echo "No nn_multiT outputs found; skipping NN plotting" >&2
 fi
 
-python fisher_rao_footprint_demo.py
+python fisher_rao_footprint_demo.py \
+  --T 2000 --d 5 --regime mixed --C-exo 2.0 --gamma 0.01 --k 0.25 \
+  --kdim 2 --sigmaK 0.2 --extra-kernels \
+  --burst --burst-period 600 --burst-hi 4.0 \
+  --rate-window 60
