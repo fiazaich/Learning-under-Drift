@@ -246,7 +246,7 @@ def one_run(
 
     # ============================= MAIN SIMULATION ==============================
     for t in range(1, T + 1):
-        # ---------- (1) SGD STEP ----------
+        # ---------- (1) Deployed predictor and empirical loss ----------
         x = sample_x(N=1).to(DEVICE)
         with torch.no_grad():
             y = (phi_fn(x) @ theta).view(-1, 1) + sigma * torch.randn(1, 1)
@@ -255,9 +255,6 @@ def one_run(
         yhat = f(x)
         train_loss = F.mse_loss(yhat, y)
         train_mse_traj.append(float(train_loss.item()))
-        train_loss.backward()
-        torch.nn.utils.clip_grad_norm_(f.parameters(), max_norm=1.0)
-        opt.step()
 
         # ---------- (2) Probe distribution ----------
         Xprobe = sample_x(N=256).to(DEVICE)
@@ -315,13 +312,19 @@ def one_run(
             # training loss sampled on same schedule as pop eval
             train_mse_eval_traj.append(float(train_loss.item()))
 
-            # population risks sampled on same schedule
+            # population risks sampled on same schedule, using the deployed
+            # pre-update f_t for both theta_t and theta_{t+1}
             R_t, R_plus = pop_risk_pair_mse(
                 f, theta, theta_next, phi_fn, sample_x_pop, N=N_pop, sigma=sigma
             )
             pop_mse_traj.append(R_t)
             pop_mse_plus_traj.append(R_plus)
             VT_terms.append(abs(R_plus - R_t))
+
+        # ---------- (7) Learner update f_t -> f_{t+1} ----------
+        train_loss.backward()
+        torch.nn.utils.clip_grad_norm_(f.parameters(), max_norm=1.0)
+        opt.step()
 
         # commit state update
         theta = theta_next
@@ -340,6 +343,7 @@ def one_run(
     R_T = float(np.mean(pop_mse_traj)) if pop_mse_traj else float("nan")
     Rplus_T = float(np.mean(pop_mse_plus_traj)) if pop_mse_plus_traj else float("nan")
     V_T = float(np.mean(VT_terms)) if VT_terms else float("nan")
+    delta_sam = float(abs(Rhat_T - R_T))
     delta_rep = float(abs(Rhat_T - Rplus_T))
 
     # Legacy aggregates (kept for compatibility)
@@ -380,6 +384,7 @@ def one_run(
         float(sum_dt),
         float(sum_kappa_path),
         float(delta_rep),
+        float(delta_sam),
         float(V_T),
         float(traj_emp_risk),
         float(traj_pop_risk),
@@ -408,23 +413,21 @@ def main(hidden_dim: int = DEFAULT_HIDDEN):
             C_exo_target = ratio * T
             for gamma in cfg.gamma_grid:
                 err_all, sdt_all, skap_all = [], [], []
-                delta_rep_all, VT_all = [], []
+                delta_rep_all, delta_sam_all, VT_all = [], [], []
                 traj_emp_all, traj_pop_all, traj_pop_plus_all = [], [], []
                 pop_init_all, pop_final_all = [], []
                 pop_plus_init_all, pop_plus_final_all = [], []
                 legacy_gap_all = []
 
                 for s in cfg.seeds:
-                    rng_jitter = np.random.default_rng(777 + s)
-                    j_exo = float(rng_jitter.uniform(0.9, 1.1))
-                    j_endo = float(rng_jitter.uniform(0.9, 1.1))
-                    C_exo_total = C_exo_target * j_exo
+                    C_exo_total = C_exo_target
 
                     (
                         err,
                         sdt,
                         skap,
                         delta_rep,
+                        delta_sam,
                         V_T,
                         traj_emp,
                         traj_pop,
@@ -446,23 +449,25 @@ def main(hidden_dim: int = DEFAULT_HIDDEN):
                         seed=s,
                         lr_learner=0.05,
                         sigma=cfg.sigma,
-                        C_pol=cfg.C_pol * j_endo,
+                        C_pol=cfg.C_pol,
                         refresh_G_every=cfg.refresh_G_every,
                         hidden_dim=cfg.hidden_dim,
-                         N_pop=cfg.N_pop,
+                        N_pop=cfg.N_pop,
                         eval_every=cfg.eval_every,
                     )
 
-                    if not all(np.isfinite(v) for v in [err, sdt, skap, delta_rep, V_T]):
+                    if not all(np.isfinite(v) for v in [err, sdt, skap, delta_rep, delta_sam, V_T]):
                         raise RuntimeError(
                             f"Non-finite metrics: seed={s}, T={T}, C_exo={C_exo_total}, gamma={gamma} "
-                            f"-> err={err}, sum_dt={sdt}, sum_kappa={skap}, delta_rep={delta_rep}, V_T={V_T}"
+                            f"-> err={err}, sum_dt={sdt}, sum_kappa={skap}, delta_rep={delta_rep}, "
+                            f"delta_sam={delta_sam}, V_T={V_T}"
                         )
 
                     err_all.append(err)
                     sdt_all.append(sdt)
                     skap_all.append(skap)
                     delta_rep_all.append(delta_rep)
+                    delta_sam_all.append(delta_sam)
                     VT_all.append(V_T)
                     traj_emp_all.append(traj_emp)
                     traj_pop_all.append(traj_pop)
@@ -486,6 +491,7 @@ def main(hidden_dim: int = DEFAULT_HIDDEN):
                             "sum_kappa": float(skap),
                             # Paper-aligned:
                             "delta_rep": float(delta_rep),
+                            "delta_sam": float(delta_sam),
                             "V_T": float(V_T),
                             "traj_Rhat": float(traj_emp),
                             "traj_R": float(traj_pop),
@@ -510,6 +516,7 @@ def main(hidden_dim: int = DEFAULT_HIDDEN):
                         "sum_kappa": float(np.mean(skap_all)),
                         # Paper-aligned summaries:
                         "delta_rep": float(np.mean(delta_rep_all)),
+                        "delta_sam": float(np.mean(delta_sam_all)),
                         "V_T": float(np.mean(VT_all)),
                         "traj_Rhat": float(np.mean(traj_emp_all)),
                         "traj_R": float(np.mean(traj_pop_all)),
@@ -553,7 +560,7 @@ def main(hidden_dim: int = DEFAULT_HIDDEN):
     b0g_fit, bsg_fit, b1g_fit, b2g_fit = map(float, coef_gap_fit)
     alpha_gap_fit = float(ALPHA_THEORY)
     if abs(b1g_fit) > 1e-12:
-        alpha_gap_fit = max(0.0, float(b2g_fit / b1g_fit))
+        alpha_gap_fit = float(b2g_fit / b1g_fit)
 
     # Full plane for ERR and GAP
     X = np.c_[np.ones_like(Tv), inv_sqrt_T, dt_over_T, sum_kappa_over_T]
@@ -640,6 +647,7 @@ def main(hidden_dim: int = DEFAULT_HIDDEN):
                 "sum_kappa",
                 # Paper-aligned:
                 "delta_rep",
+                "delta_sam",
                 "V_T",
                 "traj_Rhat",
                 "traj_R",
@@ -668,6 +676,7 @@ def main(hidden_dim: int = DEFAULT_HIDDEN):
             "sum_dt": [],
             "sum_kappa": [],
             "delta_rep": [],
+            "delta_sam": [],
             "V_T": [],
             "traj_Rhat": [],
             "traj_R": [],
@@ -692,6 +701,7 @@ def main(hidden_dim: int = DEFAULT_HIDDEN):
         m_dt, se_dt, _ = mean_se(g["sum_dt"])
         m_kap, se_kap, _ = mean_se(g["sum_kappa"])
         m_delta, se_delta, _ = mean_se(g["delta_rep"])
+        m_sam, se_sam, _ = mean_se(g["delta_sam"])
         m_VT, se_VT, _ = mean_se(g["V_T"])
         m_Rhat, se_Rhat, _ = mean_se(g["traj_Rhat"])
         m_R, se_R, _ = mean_se(g["traj_R"])
@@ -718,6 +728,8 @@ def main(hidden_dim: int = DEFAULT_HIDDEN):
                 # Paper-aligned:
                 "mean_delta_rep": m_delta,
                 "se_delta_rep": se_delta,
+                "mean_delta_sam": m_sam,
+                "se_delta_sam": se_sam,
                 "mean_V_T": m_VT,
                 "se_V_T": se_VT,
                 "mean_traj_Rhat": m_Rhat,
@@ -760,6 +772,8 @@ def main(hidden_dim: int = DEFAULT_HIDDEN):
                 "se_sum_kappa",
                 "mean_delta_rep",
                 "se_delta_rep",
+                "mean_delta_sam",
+                "se_delta_sam",
                 "mean_V_T",
                 "se_V_T",
                 "mean_traj_Rhat",
