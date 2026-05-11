@@ -22,10 +22,10 @@ Outputs (written under results/fr_footprint_<rand>/):
 
 Example:
   python fisher_rao_footprint_demo.py \
-    --T 4000 --d 5 --regime mixed --C-exo 2.0 --gamma 0.01 --k 0.25 \
+    --T 2000 --d 5 --regime mixed --C-exo 2.0 --gamma 0.01 --k 0.25 \
     --kdim 2 --sigmaK 0.2 --extra-kernels \
-    --burst --burst-period 400 --burst-hi 4.0 \
-    --rate-window 60 --multi-seed 12
+    --burst --burst-period 600 --burst-hi 4.0 \
+    --rate-window 60
 """
 
 from __future__ import annotations
@@ -371,7 +371,7 @@ def plot_multi_seed_scatter(
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--T", type=int, default=4000)
+    p.add_argument("--T", type=int, default=2000)
     p.add_argument("--d", type=int, default=5)
     p.add_argument("--regime", type=str, default="mixed", choices=["exo", "endogenous", "mixed"])
     p.add_argument("--C-exo", dest="C_exo", type=float, default=2.0)
@@ -382,11 +382,11 @@ def main() -> None:
     # kernel params
     p.add_argument("--kdim", type=int, default=2)
     p.add_argument("--sigmaK", type=float, default=0.2)
-    p.add_argument("--extra-kernels", action="store_true")
+    p.add_argument("--extra-kernels", action=argparse.BooleanOptionalAction, default=True)
 
     # bursty exogenous allocation
-    p.add_argument("--burst", action="store_true")
-    p.add_argument("--burst-period", type=int, default=400)
+    p.add_argument("--burst", action=argparse.BooleanOptionalAction, default=True)
+    p.add_argument("--burst-period", type=int, default=600)
     p.add_argument("--burst-hi", type=float, default=4.0)
 
     # rate visualization

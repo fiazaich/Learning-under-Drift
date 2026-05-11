@@ -105,13 +105,15 @@ def _target_spec(target: str) -> Tuple[str, str, str]:
     """
     if target == "delta_rep":
         return "delta_rep", "mean_delta_rep", r"$\Delta_T^{\mathrm{rep}} = |\widehat R_T - R_T^+|$"
+    if target == "delta_sam":
+        return "delta_sam", "mean_delta_sam", r"$\Delta_T^{\mathrm{sam}} = |\widehat R_T - R_T|$"
     if target == "V_T":
         return "V_T", "mean_V_T", r"$V_T = \frac{1}{T}\sum_t |R(\theta_{t+1},f_t)-R(\theta_t,f_t)|$"
     if target == "err_T":
         return "err_T", "mean_err_T", r"Terminal mismatch $\mathbb{E}|f_T(x)-g_{\theta_T}(x)|$"
     if target == "legacy_gap":
         return "gen_gap_traj_legacy", "mean_gen_gap_traj_legacy", r"Legacy proxy gap"
-    raise ValueError("target must be one of: delta_rep, V_T, err_T, legacy_gap")
+    raise ValueError("target must be one of: delta_rep, delta_sam, V_T, err_T, legacy_gap")
 
 
 def pick_holdout_T(T_values: np.ndarray, user_T_hold: Optional[int]) -> int:

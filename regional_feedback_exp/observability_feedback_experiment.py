@@ -437,9 +437,11 @@ def burn_in_learner(df0: pd.DataFrame, seed: int, ridge_alpha: float) -> tuple[P
 
 def aggregate_round_metrics(rr: pd.DataFrame) -> dict:
     rhat_t = float(rr["empirical_loss"].mean())
+    r_t = float(rr["population_risk"].mean())
     rplus_t = float(rr["preq_target"].mean())
     return {
         "Rhat_T": rhat_t,
+        "R_T": r_t,
         "Rplus_T": rplus_t,
         "Delta_rep_T": abs(rhat_t - rplus_t),
         "V_T": float(rr["v_t"].mean()),
@@ -490,6 +492,7 @@ def run_single_condition(
             "mu": mu,
             "seed": seed,
             "empirical_loss": empirical_loss,
+            "population_risk": current_all_mse,
             "preq_target": next_all_mse,
             "v_t": v_t,
             **{f"fr_step_{channel}": fr_steps[channel] for channel in CHANNEL_ORDER},

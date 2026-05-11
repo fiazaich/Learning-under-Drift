@@ -28,7 +28,7 @@ Writes `saturation_*.(pdf|png|svg)` under `results/gaussian_T_sweep_reflect_<tag
 
 1) Generate data and metrics  
 ```bash
-python nn_drift_repro_experiment.py --outdir nn_repro_results
+python nn_drift_repro_experiment.py
 ```
 
 2) Plot (point to the run directory that contains `figNN_additivity_raw.csv`)  

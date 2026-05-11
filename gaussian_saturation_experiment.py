@@ -260,7 +260,7 @@ def simulate_one_run_reflect(
     sampler = cholesky_sampler(Sigma, rng)
     trSigma = float(np.trace(Sigma))
 
-    # Sigma assumed sigma^2 I for step calibration (as in the rest of your Gaussian sandbox)
+    # Sigma is sigma_scale * I; step_euc is calibrated so Fisher step = delta_F.
     sigma = float(np.sqrt(Sigma[0, 0]))
     step_euc = delta_F * sigma  # so Fisher step = step/sigma = delta_F
 
@@ -329,8 +329,8 @@ def simulate_one_run_reflect(
 
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--sigma_scale", type=float, default=0.1,
-                   help="Sigma = sigma_scale * I (default 0.1).")
+    p.add_argument("--sigma_scale", type=float, default=1.0,
+                   help="Sigma = sigma_scale * I (default 1.0).")
     p.add_argument("--radius", type=float, default=1.0,
                    help="Reflecting bounds [-R, R] (default 1.0).")
     p.add_argument("--seed_count", type=int, default=40,
