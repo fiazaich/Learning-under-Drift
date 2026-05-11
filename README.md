@@ -18,11 +18,11 @@ python gaussian_additivity_experiment.py
 ```
 Outputs to `results/gaussian_additivity_<tag>/` with CSVs plus `budget_scatter.(pdf|png|svg)`.
 
-2) T-sweep saturation curves  
+2) T-sweep components overlay
 ```bash
 python gaussian_saturation_experiment.py
 ```
-Writes `saturation_*.(pdf|png|svg)` under `results/gaussian_T_sweep_reflect_<tag>/`.
+Writes `components_overlay.(pdf|png|svg)` under `results/gaussian_T_sweep_reflect_<tag>/`.
 
 ### Neural-network drift experiment
 

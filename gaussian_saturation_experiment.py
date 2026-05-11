@@ -15,9 +15,7 @@ Paper-aligned quantities (f_t measurable w.r.t. F_{t-1}):
 
 Outputs:
 - raw.csv, summary.csv
-- saturation_Delta_rep.(pdf|svg|png)
-- saturation_Delta_sam.(pdf|svg|png)
-- saturation_V_T.(pdf|svg|png)
+- components_overlay.(pdf|svg|png)
 """
 
 from __future__ import annotations
@@ -51,11 +49,10 @@ mpl.rcParams.update(
     }
 )
 
-from matplotlib.ticker import MaxNLocator, AutoMinorLocator
-
 EPS = 1e-12
 FIGSIZE = (3.4, 2.4)
 SAVEFIG_KW = {}
+PALETTE = ["#1f77b4", "#ff7f0e"] + [plt.get_cmap("tab10")(i) for i in range(2, 10)]
 
 
 @dataclass
@@ -119,47 +116,6 @@ def write_csv(path: Path, rows: Sequence[Dict[str, object]]) -> None:
             w.writerow(r)
 
 
-def plot_saturation(summary_rows: Sequence[Dict[str, float]], fig_path: Path, which: str) -> None:
-    deltas = sorted({float(r["delta_F"]) for r in summary_rows})
-    fig, ax = plt.subplots(figsize=FIGSIZE, layout="constrained")
-    fig.set_size_inches(*FIGSIZE)
-
-    for delta in deltas:
-        rows = [r for r in summary_rows if float(r["delta_F"]) == float(delta)]
-        rows = sorted(rows, key=lambda r: int(r["T"]))
-        Tvals = np.array([int(r["T"]) for r in rows], dtype=float)
-        y = np.array([float(r[f"mean_{which}"]) for r in rows], dtype=float)
-        yse = np.array([float(r[f"se_{which}"]) for r in rows], dtype=float)
-
-        label = r"$\delta_F$=" + f"{delta:g}"
-        ax.plot(Tvals, y, marker="o", markersize=3.0, lw=0.9, label=label)
-        ax.fill_between(Tvals, y - yse, y + yse, alpha=0.15, linewidth=0)
-
-    ax.set_xscale("log")
-    ax.set_xlabel(r"Time horizon $T$", fontsize=10)
-
-    if which == "Delta_rep":
-        ax.set_ylabel(r"$\Delta_T^{\mathrm{rep}}$", fontsize=10)
-        ax.set_title(r"Repro gap under bounded persistent drift", fontsize=10, pad=2)
-    elif which == "Delta_sam":
-        ax.set_ylabel(r"$\Delta_T^{\mathrm{sam}}$", fontsize=10)
-        ax.set_title(r"Sampling term (falls with $T$)", fontsize=10, pad=2)
-    else:
-        ax.set_ylabel(r"$V_T$", fontsize=10)
-        ax.set_title(r"Drift term (sets the floor)", fontsize=10, pad=2)
-
-    ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
-    ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
-    ax.xaxis.set_minor_locator(AutoMinorLocator())
-    ax.yaxis.set_minor_locator(AutoMinorLocator())
-    ax.grid(axis="y", which="major", alpha=0.45)
-    ax.legend(frameon=False, fontsize=7, ncol=2, loc="upper right")
-
-    fig.savefig(fig_path.with_suffix(".pdf"), **SAVEFIG_KW)
-    fig.savefig(fig_path.with_suffix(".svg"), **SAVEFIG_KW)
-    fig.savefig(fig_path.with_suffix(".png"), dpi=600, **SAVEFIG_KW)
-    plt.close(fig)
-
 def plot_components_overlay(summary_rows: Sequence[Dict[str, float]],
                             fig_path: Path,
                             delta_show: float,
@@ -188,25 +144,23 @@ def plot_components_overlay(summary_rows: Sequence[Dict[str, float]],
     fig, ax = plt.subplots(figsize=FIGSIZE, layout="constrained")
     fig.set_size_inches(*FIGSIZE)
 
-    # Curves
-    ax.plot(T, sam, marker="o", markersize=3.0, lw=0.9,
-            label=rf"$\Delta_T^{{\mathrm{{sam}}}}$ ($\delta_F={delta_show:g}$)")
-    ax.fill_between(T, sam - sam_se, sam + sam_se, alpha=0.15, linewidth=0)
+    ax.plot(T, V, marker="o", markersize=3.0, lw=0.9,
+            color=PALETTE[0], label=rf"$V_T$ ($\delta_F={delta_show:g}$)")
+    ax.fill_between(T, V - V_se, V + V_se, color=PALETTE[0], alpha=0.15, linewidth=0)
 
-    ax.plot(T, V, marker="s", markersize=3.0, lw=0.9,
-            label=rf"$V_T$ ($\delta_F={delta_show:g}$)")
-    ax.fill_between(T, V - V_se, V + V_se, alpha=0.15, linewidth=0)
+    ax.plot(T, sam, marker="s", markersize=3.0, lw=0.9, linestyle="--",
+            color=PALETTE[1], label=rf"$\Delta_T^{{\mathrm{{sam}}}}$ ($\delta_F={delta_show:g}$)")
+    ax.fill_between(T, sam - sam_se, sam + sam_se, color=PALETTE[1], alpha=0.15, linewidth=0)
 
     if include_iid and abs(delta_show) > 1e-12:
         T0, sam0, sam0_se, V0, V0_se = curve(0.0)
-        ax.plot(T0, sam0, lw=0.9, alpha=0.5, label=r"$\Delta_T^{\mathrm{sam}}$ (iid)")
-        ax.plot(T0, V0, lw=0.9, alpha=0.5, label=r"$V_T$ (iid)")
+        ax.plot(T0, V0, lw=0.9, color=PALETTE[0], alpha=0.45, label=r"$V_T$ (iid)")
+        ax.plot(T0, sam0, lw=0.9, linestyle="--", color=PALETTE[1], alpha=0.45, label=r"$\Delta_T^{\mathrm{sam}}$ (iid)")
 
     ax.set_xscale("log")
     ax.set_xlabel(r"Horizon $T$", fontsize=9)
     ax.set_ylabel(r"Magnitude", fontsize=9)
 
-   
     ax.tick_params(axis="both", which="major", labelsize=8, length=3)
     ax.tick_params(axis="both", which="minor", labelsize=8, length=2)
 
@@ -219,7 +173,7 @@ def plot_components_overlay(summary_rows: Sequence[Dict[str, float]],
 
     ax.grid(axis="y", which="major", alpha=0.25, linewidth=0.6)
 
-    ax.legend(frameon=False, fontsize=7, ncol=1, loc="center right")
+    ax.legend(frameon=False, fontsize=7, ncol=1, loc="upper right")
 
     fig.savefig(fig_path.with_suffix(".pdf"), **SAVEFIG_KW)
     fig.savefig(fig_path.with_suffix(".svg"), **SAVEFIG_KW)
@@ -413,9 +367,6 @@ def main():
     write_csv(raw_path, raw_rows)
     write_csv(summary_path, summary_rows)
 
-    plot_saturation(summary_rows, outdir / "saturation_Delta_rep", which="Delta_rep")
-    plot_saturation(summary_rows, outdir / "saturation_Delta_sam", which="Delta_sam")
-    plot_saturation(summary_rows, outdir / "saturation_V_T", which="V_T")
     plot_components_overlay(
         summary_rows,
         outdir / "components_overlay",
@@ -427,7 +378,7 @@ def main():
     print(f"[ok] Sigma = {args.sigma_scale} * I, reflecting bounds R = {args.radius}")
     print(f"[ok] raw:     {raw_path}")
     print(f"[ok] summary: {summary_path}")
-    print(f"[ok] figures: saturation_(Delta_rep|Delta_sam|V_T).(pdf|svg|png)")
+    print(f"[ok] figure:  {outdir / 'components_overlay'}.(pdf|svg|png)")
     print(f"[note] summary.csv: mean_fisher_step should be ~ delta_F (sanity check).")
 
 
