@@ -1,10 +1,3 @@
-"""
-Utility helpers for organizing experiment outputs.
-
-Each script can call ``create_results_dir`` to get a fresh directory inside
-``./out`` where it can dump plots, CSVs, JSON, etc., without cluttering the
-repository root.
-"""
 from __future__ import annotations
 
 from datetime import datetime
@@ -15,12 +8,6 @@ from uuid import uuid4
 PathLike = Union[str, Path]
 
 def create_results_dir(tag: str, root: PathLike = "out") -> Path:
-    """
-    Create and return a unique results directory inside ``root``.
-
-    The directory name encodes the provided ``tag``, a timestamp, and a short
-    random suffix so repeated runs within the same second never collide.
-    """
     base = Path(root)
     base.mkdir(parents=True, exist_ok=True)
 

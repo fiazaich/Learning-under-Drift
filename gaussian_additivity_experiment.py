@@ -1,25 +1,4 @@
 #!/usr/bin/env python3
-"""Gaussian additivity drift experiment (paper-aligned).
-
-Drift functional (paper-aligned):
-    V_T = (1/T) sum_{t=1}^T | R(theta_{t+1}, mu_{t-1}) - R(theta_t, mu_{t-1}) |
-with closed-form Gaussian risk:
-    R(theta, mu) = tr(Sigma) + ||theta - mu||^2
-
-Budget plumbing (Fisher-consistent):
-- dt_t    = || v_exo_t ||_{Sigma^{-1}}
-- kappa_t = || gamma*u_t ||_{Sigma^{-1}}
-and exogenous increments are generated with Fisher-normalized directions so that
-sum_t dt_t ≈ C_exo (when exo drift enabled).
-
-Outputs:
-- additivity_raw.csv (per seed)
-- additivity_summary.csv (mean ± SE per grid point)
-- plane_fit.txt
-- budget_scatter.(pdf|svg|png)
-
-Default metric for regression/plot: V_T
-"""
 
 from __future__ import annotations
 
@@ -32,7 +11,6 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 
 import numpy as np
 
-# ------------------------------ plotting deps ------------------------------
 import matplotlib as mpl
 
 mpl.use("Agg")
@@ -59,34 +37,27 @@ from matplotlib.ticker import AutoMinorLocator, MaxNLocator
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes  
 
 
-# ----------------------- Data structures & logging -----------------------
 
 @dataclass
 class RunStats:
-    # final estimation error vs last *sampled* theta (theta_T)
     err_T: float
 
-    # drift functional V_T (paper-aligned: uses mu_{t-1} inside risks)
     V_T: float
 
-    # paper-aligned gaps
-    traj_samp_gap: float     # | mean empirical - mean population at theta_t with mu_{t-1} |
-    traj_rep_gap: float      # | mean empirical - mean population at theta_{t+1} with mu_{t-1} |  (Delta_rep)
+    traj_samp_gap: float
+    traj_rep_gap: float
 
-    # budgets (Fisher-consistent)
-    sum_dt: float            # sum_t || v_exo_t ||_{Sigma^{-1}}
-    sum_kappa: float         # sum_t || gamma*u_t ||_{Sigma^{-1}}
-    fisher_path_len: float   # sum_t || theta_{t+1}-theta_t ||_{Sigma^{-1}}
+    sum_dt: float
+    sum_kappa: float
+    fisher_path_len: float
 
-    # extra telemetry
     traj_emp_risk: float
-    traj_pop_risk_pre: float     # mean_t R(theta_t, mu_{t-1})
-    traj_pop_risk_post: float    # mean_t R(theta_{t+1}, mu_{t-1})
+    traj_pop_risk_pre: float
+    traj_pop_risk_post: float
     pop_mse_initial: float
     pop_mse_final: float
 
 
-# ------------------------------ Utilities --------------------------------
 
 EPS = 1e-12
 FIGSIZE = (3.2, 2.3)
@@ -103,7 +74,6 @@ def create_results_dir(prefix: str) -> Path:
 
 
 def cholesky_sampler(Sigma: np.ndarray, rng: np.random.Generator):
-    """Return function to sample N(theta, Sigma) using one Cholesky."""
     L = np.linalg.cholesky(Sigma)
     d = Sigma.shape[0]
 
@@ -126,7 +96,6 @@ def fisher_step_length(delta: np.ndarray, Sigma_inv: np.ndarray) -> float:
 
 
 def fit_linear_plane(y: np.ndarray, X: np.ndarray) -> Tuple[np.ndarray, float]:
-    """OLS: y ~ X @ coef. Returns (coef, R^2)."""
     coef, *_ = np.linalg.lstsq(X, y, rcond=None)
     yhat = X @ coef
     ss_res = float(np.sum((y - yhat) ** 2))
@@ -136,39 +105,28 @@ def fit_linear_plane(y: np.ndarray, X: np.ndarray) -> Tuple[np.ndarray, float]:
 
 
 def risk_gaussian_mean(theta: np.ndarray, mu: np.ndarray, trSigma: float) -> float:
-    """Population MSE: E||X - mu||^2 for X ~ N(theta, Sigma)."""
     return float(trSigma + np.sum((theta - mu) ** 2))
 
 
-# --------------------------- Core simulation -----------------------------
 
 def simulate_one_run(
     T: int,
     d: int,
     Sigma: np.ndarray,
-    regime: str,         # "iid", "exo", "endogenous", or "mixed"
-    C_exo: float,        # total *Fisher* exogenous path budget (used if exo enabled)
-    gamma: float,        # action-to-environment gain
-    policy_k: float,     # u_t = -k * mu_{t-1}  (paper-aligned measurability)
+    regime: str,
+    C_exo: float,
+    gamma: float,
+    policy_k: float,
     seed: int,
 ) -> RunStats:
-    """
-    Gaussian mean estimation with paper-aligned timing:
-      - Deployed predictor at time t: mu_{t-1}
-      - Empirical loss at time t: ||mu_{t-1} - x_t||^2
-      - Endogenous action u_t is based on mu_{t-1}
-      - Drift term V_T uses mu_{t-1} inside both risks:
-            |R(theta_{t+1}, mu_{t-1}) - R(theta_t, mu_{t-1})|
-    """
     rng = np.random.default_rng(seed)
     sampler = cholesky_sampler(Sigma, rng)
     Sigma_inv = np.linalg.inv(Sigma)
     trSigma = float(np.trace(Sigma))
 
-    theta = np.zeros(d)  # theta_t
-    mu = np.zeros(d)     # mu_{t-1} at loop start
+    theta = np.zeros(d)
+    mu = np.zeros(d)
 
-    # Precompute exogenous vectors with Fisher-normalized directions so sum_t ||v_exo_t||_F ≈ C_exo.
     exo_vecs = np.zeros((T, d))
     if regime in ("exo", "mixed") and C_exo > 0.0:
         step_F = C_exo / T
@@ -181,66 +139,51 @@ def simulate_one_run(
                 nF = fisher_norm(v, Sigma_inv) + EPS
             exo_vecs[t] = v * (step_F / (nF + EPS))
 
-    # Storage for theta_t (to define theta_T cleanly)
-    theta_pre = np.zeros((T, d))   # theta_t
+    theta_pre = np.zeros((T, d))
 
-    # Budgets
     sum_dt = 0.0
     sum_kappa = 0.0
     fisher_path_len = 0.0
 
-    # Risks / losses
     emp_losses: List[float] = []
-    pop_pre_losses: List[float] = []    # R(theta_t, mu_{t-1})
-    pop_post_losses: List[float] = []   # R(theta_{t+1}, mu_{t-1})  (paper one-step-ahead target)
+    pop_pre_losses: List[float] = []
+    pop_post_losses: List[float] = []
     V_terms: List[float] = []
 
     for t in range(1, T + 1):
-        mu_prev = mu.copy()     # deployed f_t
+        mu_prev = mu.copy()
         theta_pre[t - 1] = theta
 
-        # sample x_t ~ N(theta_t, Sigma)
         x_t = sampler(theta)
 
-        # empirical loss at time t using deployed predictor mu_{t-1}
         emp_losses.append(float(np.sum((mu_prev - x_t) ** 2)))
 
-        # population risk at theta_t with deployed predictor
         R_pre = risk_gaussian_mean(theta, mu_prev, trSigma)
         pop_pre_losses.append(R_pre)
 
-        # policy action (paper-aligned measurability): based on mu_{t-1}
         u = np.zeros(d)
         if regime in ("endogenous", "mixed") and abs(gamma) > 0.0:
             u = -policy_k * mu_prev
 
-        # exogenous increment
         v_exo = exo_vecs[t - 1] if regime in ("exo", "mixed") else np.zeros(d)
 
-        # environment update
         theta_next = theta + v_exo + gamma * u
 
-        # budgets (Fisher-consistent)
         dt_t = fisher_norm(v_exo, Sigma_inv)
         kappa_t = fisher_norm(gamma * u, Sigma_inv)
         sum_dt += dt_t
         sum_kappa += kappa_t
         fisher_path_len += fisher_step_length(theta_next - theta, Sigma_inv)
 
-        # one-step-ahead population risk with same deployed predictor
         R_post = risk_gaussian_mean(theta_next, mu_prev, trSigma)
         pop_post_losses.append(R_post)
 
-        # drift functional term (paper V_T)
         V_terms.append(abs(R_post - R_pre))
 
-        # learner update AFTER observing x_t (mu_t)
         mu = mu_prev + (x_t - mu_prev) / t
 
-        # advance environment
         theta = theta_next
 
-    # err_T compares mu_T to theta_T (last sampled theta)
     theta_T = theta_pre[-1]
     err_T = float(np.linalg.norm(mu - theta_T))
 
@@ -272,7 +215,6 @@ def simulate_one_run(
     )
 
 
-# --------------------------- Experiment scaffolding -----------------------------
 
 @dataclass(frozen=True)
 class MetricSpec:
@@ -747,7 +689,6 @@ def plot_budget_scatter(stats: RegressionSummary, fig_prefix: Path) -> None:
     plt.close(fig)
 
 
-# ------------------------------ CLI / main ------------------------------
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)

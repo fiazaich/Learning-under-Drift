@@ -1,32 +1,4 @@
 #!/usr/bin/env python3
-"""fisher_rao_footprint_demo.py
-
-Demonstrate Fisher--Rao contraction under a fixed Markov kernel K in the
-Gaussian-location model.
-
-Environment:
-  P_t = N(theta_t, Sigma) with drift--feedback dynamics similar in spirit to
-  gaussian_additivity_experiment.py (exo Fisher-budgeted increments + endogenous feedback).
-
-Observable channel (fixed Markov kernel):
-  K: u = B x + xi,   xi ~ N(0, sigmaK^2 I_k)
-
-Then Q_t := K_# P_t is Gaussian with mean B theta_t and covariance
-S = B Sigma B^T + sigmaK^2 I_k.
-
-Outputs (written under results/fr_footprint_<rand>/):
-  - fr_footprint_rate_demo.pdf/png : local Fisher rate and footprints.
-  - fr_footprint_contraction_demo.pdf/png : stepwise contraction scatter.
-  - fr_footprint_rate_scatter.pdf/png : optional cross-seed terminal-rate
-    contraction scatter (when --multi-seed > 0).
-
-Example:
-  python fisher_rao_footprint_demo.py \
-    --T 2000 --d 5 --regime mixed --C-exo 2.0 --gamma 0.01 --k 0.25 \
-    --kdim 2 --sigmaK 0.2 --extra-kernels \
-    --burst --burst-period 600 --burst-hi 4.0 \
-    --rate-window 60
-"""
 
 from __future__ import annotations
 
@@ -70,11 +42,11 @@ from gaussian_additivity_experiment import (
 
 @dataclass
 class Trajectory:
-    theta: np.ndarray          # (T+1, d)
-    mu_prev: np.ndarray        # (T, d) predictor used at step t (mu_{t-1})
-    dt: np.ndarray             # (T,) exo Fisher step lengths
-    kappa: np.ndarray          # (T,) endo Fisher step lengths
-    l_intrinsic: np.ndarray    # (T,) ||theta_{t+1}-theta_t||_{Sigma^{-1}}
+    theta: np.ndarray
+    mu_prev: np.ndarray
+    dt: np.ndarray
+    kappa: np.ndarray
+    l_intrinsic: np.ndarray
 
 
 def make_burst_weights_contiguous(
@@ -84,14 +56,6 @@ def make_burst_weights_contiguous(
     rng: np.random.Generator,
     frac_hi: float = 0.5,
 ) -> np.ndarray:
-    """Contiguous bursts with mean exactly 1.
-
-    Each period is split into a contiguous high segment (fraction frac_hi) and
-    a contiguous low segment, with a random phase shift per period.
-
-    We choose lo so that the *period average* is 1, then renormalize globally
-    to mean 1.
-    """
     period = max(2, int(period))
     hi = float(hi)
     frac_hi = float(frac_hi)
@@ -105,23 +69,17 @@ def make_burst_weights_contiguous(
         end = min(T, idx + period)
         L = end - idx
         m = max(1, int(round(frac_hi * L)))
-        # contiguous high block of length m with random start within the period
         start = int(rng.integers(low=0, high=max(1, L - m + 1)))
         block = np.full(L, lo, dtype=float)
         block[start : start + m] = hi
         w[idx:end] = block
         idx = end
 
-    # global renormalization to mean 1
     w /= (np.mean(w) + 1e-12)
     return w
 
 
 def trailing_mean(x: np.ndarray, window: int) -> np.ndarray:
-    """Trailing-window mean with the same length as x.
-
-    For t < window, uses mean over x[:t+1].
-    """
     window = max(1, int(window))
     out = np.empty_like(x, dtype=float)
     c = np.cumsum(x, dtype=float)
@@ -177,7 +135,6 @@ def simulate_with_trajectory(
     theta = np.zeros(d)
     mu = np.zeros(d)
 
-    # Exogenous vectors with Fisher-normalized directions so sum_t ||v_exo_t||_F ≈ C_exo.
     exo_vecs = np.zeros((T, d))
     if regime in ("exo", "mixed") and C_exo > 0.0:
         base_step = C_exo / T
@@ -243,7 +200,6 @@ def simulate_with_trajectory(
 
 
 def footprint_lengths_linear_kernel(theta: np.ndarray, Sigma: np.ndarray, B: np.ndarray, sigmaK: float) -> np.ndarray:
-    """Per-step FR lengths after K: u = Bx + xi, xi ~ N(0, sigmaK^2 I)."""
     S = B @ Sigma @ B.T + (sigmaK**2) * np.eye(B.shape[0])
     S_inv = np.linalg.inv(S)
     T = theta.shape[0] - 1
@@ -379,20 +335,16 @@ def main() -> None:
     p.add_argument("--k", type=float, default=0.25, help="feedback gain (policy scale)")
     p.add_argument("--seed", type=int, default=0)
 
-    # kernel params
     p.add_argument("--kdim", type=int, default=2)
     p.add_argument("--sigmaK", type=float, default=0.2)
     p.add_argument("--extra-kernels", action=argparse.BooleanOptionalAction, default=True)
 
-    # bursty exogenous allocation
     p.add_argument("--burst", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument("--burst-period", type=int, default=600)
     p.add_argument("--burst-hi", type=float, default=4.0)
 
-    # rate visualization
     p.add_argument("--rate-window", type=int, default=60, help="trailing window for local rate")
 
-    # multi-seed
     p.add_argument("--multi-seed", type=int, default=0, help="if >0, run this many seeds and plot terminal rates")
 
     args = p.parse_args()
@@ -403,7 +355,6 @@ def main() -> None:
 
     outdir = create_results_dir("fr_footprint")
 
-    # single-run trajectory
     traj = simulate_with_trajectory(
         T=args.T,
         d=args.d,
@@ -423,12 +374,10 @@ def main() -> None:
     for lab, B, sig in kernels:
         lKs[lab] = footprint_lengths_linear_kernel(traj.theta, Sigma, B, sig)
 
-    # sanity: stepwise contraction (numerical tolerance)
     max_viol = max(float(np.max(v - l)) for v in lKs.values())
 
     plot_main(outdir=outdir, l=l, lKs=lKs, rate_window=args.rate_window)
 
-    # optional multi-seed scatter
     if args.multi_seed and args.multi_seed > 0:
         seeds = list(range(args.multi_seed))
         rates_P = np.zeros(len(seeds))
@@ -456,7 +405,6 @@ def main() -> None:
 
         plot_multi_seed_scatter(outdir=outdir, rates_P=rates_P, rates_Q=rates_Q)
 
-    # write summary
     summary = []
     summary.append(f"max_step_violation (lK - l) = {max_viol:.3e}")
     summary.append(f"A_T(P)/T   = {float(np.sum(l)/args.T):.6g}")

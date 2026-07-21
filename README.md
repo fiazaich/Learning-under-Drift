@@ -26,19 +26,11 @@ Writes `components_overlay.(pdf|png|svg)` under `results/gaussian_T_sweep_reflec
 
 ### Neural-network drift experiment
 
-1) Generate data and metrics  
 ```bash
-python nn_drift_repro_experiment.py
+python experiments/nn_timing_balanced/balanced_timing_experiment.py run \
+  --output-tag nn_timing_balanced
 ```
-
-2) Plot (point to the run directory that contains `figNN_additivity_raw.csv`)  
-```bash
-python nn_repro_plotting.py --outdir out/nn_multiT_YYYYMMDD_HHMMSS_xxxxxx --target delta_rep
-# variants:
-#   --collapse-mode residual
-#   --do-3d
-#   --T-hold <T>
-```
+Writes raw runs, envelope diagnostics, and figures under `experiments/nn_timing_balanced/runs/`.
 
 ### Fisher–Rao footprint demo
 
@@ -51,17 +43,17 @@ python fisher_rao_footprint_demo.py \
 ```
 Produces `fr_footprint_rate_demo.(pdf|png)` and `fr_footprint_contraction_demo.(pdf|png)` under `results/fr_footprint_<tag>/`. Use `--multi-seed N` to also get `fr_footprint_rate_scatter.(pdf|png)`.
 
-### Regional feedback observability experiment
+### Regional feedback / observability experiment
 
 ```bash
 cd regional_feedback_exp
 python observability_feedback_experiment.py
 ```
-Requires `US_Regional_Sales_Data.csv` in `regional_feedback_exp/`. Outputs are written to `regional_feedback_exp/regional_feedback_outputs/`.
+Requires `US_Regional_Sales_Data.csv` in `regional_feedback_exp/`. This single entry point runs the regional feedback observability experiment and writes outputs to `regional_feedback_exp/regional_feedback_outputs/`.
 
 Main figures:
 
-- `figure_main_channel_association_summary.(pdf|png|svg)`: raw observed Fisher-rate association with \(V_T\), \(\Delta_T^{\mathrm{rep}}\), and per-transition \(v_t\).
+- `figure_main_channel_association_summary.(pdf|png|svg)`: raw observed Fisher-rate association with \(V_T\), \(\Delta_T^{\mathrm{preq}}\), and per-transition \(v_t\).
 - `figure_main_step_fr_association.(pdf|png|svg)`: per-transition Spearman association between channel Fisher motion and \(v_t\).
 - `figure_main_feedback_manipulation_check.(pdf|png|svg)`: feedback-strength manipulation check for risk quantities and raw observed Fisher rates.
 
@@ -77,7 +69,7 @@ Supporting CSVs are also written in the same directory: run-level results, round
 ```bash
 ./run_experiments.sh
 ```
-Runs the Gaussian additivity and saturation experiments, the NN drift experiment, plots the newest `nn_multiT_*` run, and generates the Fisher–Rao footprint figures.
+Runs the Gaussian additivity and saturation experiments, the balanced NN envelope experiment, the regional feedback / observability experiment, and the Fisher–Rao footprint figures.
 
 ### Citation
 

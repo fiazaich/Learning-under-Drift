@@ -27,7 +27,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 try:
-    import scienceplots  # noqa: F401
+    import scienceplots
 
     plt.style.use(["science", "ieee"])
 except Exception:
@@ -46,7 +46,6 @@ mpl.rcParams.update(
 PALETTE = ["#1f77b4", "#ff7f0e"] + [plt.get_cmap("tab10")(i) for i in range(2, 10)]
 
 
-# Config
 
 DATA_PATH = "US_Regional_Sales_Data.csv"
 OUTPUT_DIR = Path("regional_feedback_outputs")
@@ -95,7 +94,6 @@ CHANNEL_LABELS = {
 }
 
 
-# Utilities
 
 def fisher_rao_categorical(p: np.ndarray, q: np.ndarray) -> float:
     inner = float(np.sum(np.sqrt(p * q)))
@@ -129,10 +127,11 @@ def save_figure_all_formats(fig, fig_path: Path) -> None:
     plt.close(fig)
 
 
-def style_axis(ax) -> None:
-    ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
+def style_axis(ax, categorical_x: bool = False) -> None:
+    if not categorical_x:
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
+        ax.xaxis.set_minor_locator(AutoMinorLocator())
     ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
-    ax.xaxis.set_minor_locator(AutoMinorLocator())
     ax.yaxis.set_minor_locator(AutoMinorLocator())
     ax.grid(axis="y", which="major", alpha=0.25, linewidth=0.6)
 
@@ -165,7 +164,6 @@ def make_group_indicator(series: pd.Series) -> np.ndarray:
     return (series.astype(str).to_numpy() != str(ref)).astype(int)
 
 
-# Data and model
 
 def load_and_prepare_base_dataframe(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
@@ -269,7 +267,6 @@ def choose_ridge_alpha(df0: pd.DataFrame) -> float:
     return float(min(scores)[1])
 
 
-# Monitoring channels
 
 @dataclass
 class ChannelArtifacts:
@@ -359,7 +356,6 @@ CHANNEL_PROB_FUNCTIONS = {
 }
 
 
-# Feedback dynamics
 
 @dataclass
 class FeedbackScales:
@@ -419,7 +415,6 @@ def apply_feedback_one_round(
     return df_next.reset_index(drop=True)
 
 
-# Simulation and main metrics
 
 def split_with_row_ids(df: pd.DataFrame, random_state: int) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     split_df = df.reset_index(drop=True).copy()
@@ -583,7 +578,7 @@ def build_channel_association_summary_table(
     step_diagnostics_df: pd.DataFrame,
 ) -> pd.DataFrame:
     rows = []
-    run_labels = {"V_T": r"$V_T$", "Delta_rep_T": r"$\Delta_T^{\mathrm{rep}}$"}
+    run_labels = {"V_T": r"$V_T$", "Delta_rep_T": r"$\Delta_T^{\mathrm{preq}}$"}
     for channel in CHANNEL_ORDER:
         for target, label in run_labels.items():
             row = raw_rate_regression_df[
@@ -615,7 +610,6 @@ def build_channel_association_summary_table(
     return pd.DataFrame(rows)
 
 
-# Main figures
 
 def plot_main_channel_association_summary(
     raw_rate_regression_df: pd.DataFrame,
@@ -626,7 +620,7 @@ def plot_main_channel_association_summary(
     x = np.arange(len(CHANNEL_ORDER))
     bar_width = 0.36
 
-    for idx, (target, label) in enumerate([("V_T", r"$V_T$"), ("Delta_rep_T", r"$\Delta_T^{\mathrm{rep}}$")]):
+    for idx, (target, label) in enumerate([("V_T", r"$V_T$"), ("Delta_rep_T", r"$\Delta_T^{\mathrm{preq}}$")]):
         values = [
             float(
                 association_df[
@@ -638,11 +632,12 @@ def plot_main_channel_association_summary(
             for channel in CHANNEL_ORDER
         ]
         axes[0].bar(x + (idx - 0.5) * bar_width, values, width=bar_width, label=label, color=PALETTE[idx])
-    axes[0].set_ylabel(r"Raw-rate regression $R^2$")
+    axes[0].set_ylabel(r"Raw-rate regression $R^2$", fontsize=10.5)
     axes[0].set_ylim(0.0, 1.0)
     axes[0].set_xticks(x)
-    axes[0].set_xticklabels([channel_label(channel) for channel in CHANNEL_ORDER], rotation=25, ha="right", fontsize=7.0)
-    axes[0].legend(frameon=False, fontsize=7.0, loc="upper left")
+    axes[0].set_xticklabels([channel_label(channel) for channel in CHANNEL_ORDER], rotation=25, ha="right", fontsize=8.0)
+    axes[0].tick_params(axis="y", labelsize=8.5)
+    axes[0].legend(frameon=False, fontsize=8.0, loc="upper left")
 
     values = [
         float(
@@ -654,17 +649,18 @@ def plot_main_channel_association_summary(
         )
         for channel in CHANNEL_ORDER
     ]
-    axes[1].bar(x, values, width=0.58, label=r"$v_t$", color=PALETTE[0])
-    axes[1].set_ylabel(r"Spearman $\rho$")
+    axes[1].bar(x, values, width=0.58, label=r"$v_t$", color="#e377c2")
+    axes[1].set_ylabel(r"Spearman $\rho$", fontsize=10.5)
     axes[1].set_ylim(0.0, 1.0)
     axes[1].set_xticks(x)
-    axes[1].set_xticklabels([channel_label(channel) for channel in CHANNEL_ORDER], rotation=25, ha="right", fontsize=7.0)
-    axes[1].legend(frameon=False, fontsize=7.0, loc="upper left")
+    axes[1].set_xticklabels([channel_label(channel) for channel in CHANNEL_ORDER], rotation=25, ha="right", fontsize=8.0)
+    axes[1].tick_params(axis="y", labelsize=8.5)
+    axes[1].legend(frameon=False, fontsize=8.0, loc="upper left")
 
     for label, ax in zip(["(a)", "(b)"], axes):
         ax.axhline(0.0, color="black", lw=0.7)
-        ax.text(0.98, 0.96, label, transform=ax.transAxes, ha="right", va="top", fontsize=8.0)
-        style_axis(ax)
+        ax.text(0.98, 0.96, label, transform=ax.transAxes, ha="right", va="top", fontsize=9.0)
+        style_axis(ax, categorical_x=True)
     save_figure_all_formats(fig, OUTPUT_DIR / "figure_main_channel_association_summary.png")
     return association_df
 
@@ -684,7 +680,7 @@ def plot_main_step_fr_association(step_diagnostics_df: pd.DataFrame) -> pd.DataF
     for bar, value in zip(bars, step_vt["spearman"]):
         ax.text(bar.get_x() + bar.get_width() / 2.0, bar.get_height() + 0.015, f"{float(value):.2f}", ha="center", va="bottom", fontsize=7.0)
     ax.text(0.98, 0.94, f"n={int(step_vt['n_steps'].iloc[0])} positive-$\\mu$ transitions", transform=ax.transAxes, ha="right", va="top", fontsize=7.0)
-    style_axis(ax)
+    style_axis(ax, categorical_x=True)
     save_figure_all_formats(fig, OUTPUT_DIR / "figure_main_step_fr_association.png")
     return step_vt
 
@@ -695,7 +691,7 @@ def plot_main_feedback_manipulation_check(summary_df: pd.DataFrame, n_seeds: int
 
     for target, label, color, marker in [
         ("V_T", r"$V_T$", PALETTE[0], "o"),
-        ("Delta_rep_T", r"$\Delta_T^{\mathrm{rep}}$", PALETTE[1], "s"),
+        ("Delta_rep_T", r"$\Delta_T^{\mathrm{preq}}$", PALETTE[1], "s"),
     ]:
         y = summary_df[f"{target}_mean"].to_numpy(dtype=float)
         yerr = standard_error(summary_df[f"{target}_std"], n_seeds).to_numpy(dtype=float)
@@ -739,7 +735,7 @@ def write_main_figure_values_summary(
         lines.append(f"$\\mu$={float(row['mu']):.6g}:")
         for col, label in [
             ("V_T_mean", "$V_T$ mean"),
-            ("Delta_rep_T_mean", "$\\Delta_T^{\\mathrm{rep}}$ mean"),
+            ("Delta_rep_T_mean", "$\\Delta_T^{\\mathrm{preq}}$ mean"),
             ("A_rate_null_mean", "Null blind raw observed FR mean"),
             ("A_rate_coarse_mean", "Coarse score raw observed FR mean"),
             ("A_rate_task_mean", "Task-aligned raw observed FR mean"),
@@ -775,7 +771,6 @@ def cleanup_output_dir() -> None:
             path.unlink()
 
 
-# Main
 
 def main() -> None:
     df0 = load_and_prepare_base_dataframe(DATA_PATH)

@@ -1,22 +1,4 @@
 #!/usr/bin/env python3
-"""Gaussian T-sweep saturation experiment (paper-aligned).
-
-Shows:
-1) vanishing drift (delta_F=0): Delta_rep ~ Delta_sam -> 0 (sampling dominated)
-2) bounded persistent drift (delta_F>0): Delta_rep decreases then plateaus (drift floor)
-
-Paper-aligned quantities (f_t measurable w.r.t. F_{t-1}):
-- deployed predictor at time t: f_t = mu_{t-1}
-- empirical risk:   Rhat_T   = (1/T) sum ||x_t - mu_{t-1}||^2
-- pop risk:         R_T      = (1/T) sum [tr(Sigma) + ||theta_t   - mu_{t-1}||^2]
-- one-step-ahead:   R_T^+    = (1/T) sum [tr(Sigma) + ||theta_{t+1}- mu_{t-1}||^2]
-- gaps: Delta_sam=|Rhat_T-R_T|, Delta_rep=|Rhat_T-R_T^+|
-- drift term: V_T = (1/T) sum |R(theta_{t+1},mu_{t-1}) - R(theta_t,mu_{t-1})|
-
-Outputs:
-- raw.csv, summary.csv
-- components_overlay.(pdf|svg|png)
-"""
 
 from __future__ import annotations
 
@@ -120,12 +102,6 @@ def plot_components_overlay(summary_rows: Sequence[Dict[str, float]],
                             fig_path: Path,
                             delta_show: float,
                             include_iid: bool = True) -> None:
-    """
-    One plot with TWO curves vs T for a single delta_F:
-      - Delta_sam (falls with T)
-      - V_T (roughly flat)
-    Optionally overlays iid (delta_F=0) as faint reference.
-    """
 
     def curve(delta: float):
         rows = [r for r in summary_rows if abs(float(r["delta_F"]) - delta) < 1e-12]
@@ -182,17 +158,11 @@ def plot_components_overlay(summary_rows: Sequence[Dict[str, float]],
 
 
 def reflect_step(theta: float, step: float, direction: float, R: float) -> Tuple[float, float]:
-    """
-    Reflecting dynamics in [-R, R] with constant step magnitude.
-    Returns (theta_next, direction_next).
-    """
     proposed = theta + direction * step
     if proposed > R:
-        # reflect across +R
         theta_next = 2 * R - proposed
         direction_next = -direction
     elif proposed < -R:
-        # reflect across -R
         theta_next = -2 * R - proposed
         direction_next = -direction
     else:
@@ -214,12 +184,11 @@ def simulate_one_run_reflect(
     sampler = cholesky_sampler(Sigma, rng)
     trSigma = float(np.trace(Sigma))
 
-    # Sigma is sigma_scale * I; step_euc is calibrated so Fisher step = delta_F.
     sigma = float(np.sqrt(Sigma[0, 0]))
-    step_euc = delta_F * sigma  # so Fisher step = step/sigma = delta_F
+    step_euc = delta_F * sigma
 
     theta = 0.0
-    direction = +1.0  # bounce back and forth
+    direction = +1.0
     mu = np.zeros(d)
 
     emp_losses: List[float] = []
@@ -301,11 +270,8 @@ def main():
 
     seeds = tuple(range(args.seed_count))
 
-    # log-spaced T grid
-    #T_grid = (100, 200, 400, 800, 1600, 3200, 6400)
     T_grid = (200, 400, 800, 1600, 3200, 6400, 12800)
 
-    # per-step Fisher motion levels (include 0 baseline)
     
     delta_grid = (0.00, 0.1, 0.200)
 
@@ -335,7 +301,6 @@ def main():
                     "mean_abs_theta": s.mean_abs_theta,
                 })
 
-    # summarize by (delta_F, T)
     from collections import defaultdict
     grp = defaultdict(list)
     for r in raw_rows:
